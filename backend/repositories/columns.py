@@ -11,7 +11,7 @@ class ColumnRepository:
     """Репозиторий для работы с колонками."""
 
     @classmethod
-    async def _get_member_role(cls, board_id: int, user_id: int) -> MemberRole | None:
+    async def get_member_role(cls, board_id: int, user_id: int) -> MemberRole | None:
         """Возвращает роль пользователя в доске или None, если не член."""
         async with new_session() as session:
             # Сначала проверяем владельца
@@ -33,7 +33,7 @@ class ColumnRepository:
         """
         Создаёт колонку в доске. Требуется роль writer или owner.
         """
-        role = await cls._get_member_role(board_id, user_id)
+        role = await cls.get_member_role(board_id, user_id)
         if role not in (MemberRole.WRITER, MemberRole.OWNER):
             raise ValueError("Недостаточно прав для создания колонки")
 
@@ -127,7 +127,7 @@ class ColumnRepository:
             if not column:
                 raise ValueError("Колонка не найдена")
 
-            role = await cls._get_member_role(column.board_id, user_id)
+            role = await cls.get_member_role(column.board_id, user_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для редактирования колонки")
 
@@ -154,7 +154,7 @@ class ColumnRepository:
             if not column:
                 raise ValueError("Колонка не найдена")
 
-            role = await cls._get_member_role(column.board_id, user_id)
+            role = await cls.get_member_role(column.board_id, user_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для удаления колонки")
 

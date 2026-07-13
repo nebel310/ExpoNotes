@@ -12,7 +12,7 @@ class CardRepository:
     """Репозиторий для работы с карточками."""
 
     @classmethod
-    async def _get_member_role(cls, board_id: int, user_id: int) -> MemberRole | None:
+    async def (cls, board_id: int, user_id: int) -> MemberRole | None:
         """Возвращает роль пользователя в доске."""
         async with new_session() as session:
             board = await session.get(BoardOrm, board_id)
@@ -48,7 +48,7 @@ class CardRepository:
             if not column:
                 raise ValueError("Колонка не найдена")
 
-            role = await cls._get_member_role(column.board_id, author_id)
+            role = await cls.(column.board_id, author_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для создания карточки")
 
@@ -152,7 +152,7 @@ class CardRepository:
             if not column:
                 raise ValueError("Колонка не найдена")
 
-            role = await cls._get_member_role(column.board_id, user_id)
+            role = await cls.(column.board_id, user_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для редактирования карточки")
 
@@ -183,7 +183,7 @@ class CardRepository:
             if not column:
                 raise ValueError("Колонка не найдена")
 
-            role = await cls._get_member_role(column.board_id, user_id)
+            role = await cls.get_member_role(column.board_id, user_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для удаления карточки")
 
@@ -212,7 +212,7 @@ class CardRepository:
                 raise ValueError("Нельзя перемещать карточку между разными досками")
 
             # Проверяем права на доску (writer/owner)
-            role = await cls._get_member_role(source_column.board_id, user_id)
+            role = await cls.(source_column.board_id, user_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для перемещения карточки")
 

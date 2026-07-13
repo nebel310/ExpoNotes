@@ -24,7 +24,7 @@ class CommentRepository:
 
 
     @classmethod
-    async def _get_member_role(cls, board_id: int, user_id: int) -> MemberRole | None:
+    async def get_member_role(cls, board_id: int, user_id: int) -> MemberRole | None:
         async with new_session() as session:
             board = await session.get(BoardOrm, board_id)
             if board and board.owner_id == user_id:
@@ -46,7 +46,7 @@ class CommentRepository:
         if not board_id:
             raise ValueError("Карточка не найдена")
 
-        role = await cls._get_member_role(board_id, author_id)
+        role = await cls.(board_id, author_id)
         if not role:  # не член доски
             raise ValueError("Недостаточно прав для комментирования")
 
