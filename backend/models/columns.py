@@ -13,6 +13,7 @@ class ColumnOrm(Model):
     board_id: Mapped[int] = mapped_column(ForeignKey("boards.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(nullable=False)
     order: Mapped[int] = mapped_column(nullable=False, default=0)
+    version: Mapped[int] = mapped_column(default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)

@@ -117,9 +117,10 @@ class ColumnRepository:
 
 
     @classmethod
-    async def update_column(cls, column_id: int, user_id: int, update_data: dict) -> ColumnOrm:
+    async def update_column(cls, column_id: int, user_id: int, version: int, update_data: dict) -> ColumnOrm:
         """
         Обновляет колонку. Требуется writer/owner.
+        Проверяет версию для защиты от коллизий.
         """
         async with new_session() as session:
             column = await session.get(ColumnOrm, column_id)
@@ -130,10 +131,14 @@ class ColumnRepository:
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для редактирования колонки")
 
+            if column.version != version:
+                raise ValueError("Данные колонки были изменены другим пользователем. Обновите страницу и попробуйте снова.")
+
             for key, value in update_data.items():
                 if hasattr(column, key):
                     setattr(column, key, value)
 
+            column.version += 1
             await session.commit()
             await session.refresh(column)
             return column

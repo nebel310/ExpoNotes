@@ -140,12 +140,15 @@ components:
         description: { type: string, nullable: true, example: "Описание доски" }
     SBoardUpdate:
       type: object
+      required: [version]
       properties:
         title: { type: string, nullable: true }
         description: { type: string, nullable: true }
+        version: { type: integer }
       example:
         title: "Новое название доски"
         description: "Обновлённое описание"
+        version: 2
     BoardResponse:
       type: object
       properties:
@@ -153,6 +156,7 @@ components:
         title: { type: string, example: "Моя доска" }
         description: { type: string, nullable: true, example: "Описание доски" }
         owner_id: { type: integer, example: 10 }
+        version: { type: integer, example: 2 }
         created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
         updated_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
     BoardListResponse:
@@ -207,6 +211,7 @@ components:
         board_id: { type: integer, example: 1 }
         title: { type: string, example: "В работе" }
         order: { type: integer, example: 1 }
+        version: { type: integer, example: 3 }
         created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
     ColumnListResponse:
       type: object
@@ -229,6 +234,7 @@ components:
         file_id: { type: integer, nullable: true, example: null }
     SCardUpdate:
       type: object
+      required: [version]
       properties:
         title: { type: string, nullable: true }
         description: { type: string, nullable: true }
@@ -236,10 +242,12 @@ components:
         due_date: { type: string, format: date-time, nullable: true }
         priority: { type: string, enum: [low, medium, high], nullable: true }
         file_id: { type: integer, nullable: true }
+        version: { type: integer }
       example:
         title: "Обновлённая задача"
         description: "Новое описание"
         priority: "low"
+        version: 2
     SCardMove:
       type: object
       required: [column_id, order]
@@ -259,6 +267,7 @@ components:
         due_date: { type: string, format: date-time, nullable: true, example: "2025-02-01T10:00:00Z" }
         priority: { type: string, nullable: true, example: "high" }
         file_id: { type: integer, nullable: true, example: null }
+        version: { type: integer, example: 4 }
         created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
         updated_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
     CardListResponse:

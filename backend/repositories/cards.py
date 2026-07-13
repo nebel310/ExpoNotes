@@ -137,9 +137,10 @@ class CardRepository:
 
 
     @classmethod
-    async def update_card(cls, card_id: int, user_id: int, update_data: dict) -> CardOrm:
+    async def update_card(cls, card_id: int, user_id: int, version: int, update_data: dict) -> CardOrm:
         """
         Обновляет данные карточки (кроме column_id и order). Требуется writer/owner.
+        Проверяет версию для защиты от коллизий.
         """
         async with new_session() as session:
             card = await session.get(CardOrm, card_id)
@@ -155,10 +156,14 @@ class CardRepository:
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для редактирования карточки")
 
+            if card.version != version:
+                raise ValueError("Данные карточки были изменены другим пользователем. Обновите страницу и попробуйте снова.")
+
             for key, value in update_data.items():
                 if hasattr(card, key):
                     setattr(card, key, value)
 
+            card.version += 1
             await session.commit()
             await session.refresh(card)
             return card

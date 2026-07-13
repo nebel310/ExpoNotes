@@ -124,9 +124,10 @@ class BoardRepository:
 
 
     @classmethod
-    async def update_board(cls, board_id: int, user_id: int, update_data: dict) -> BoardOrm:
+    async def update_board(cls, board_id: int, user_id: int, version: int, update_data: dict) -> BoardOrm:
         """
         Обновляет доску. Только владелец может обновлять.
+        Проверяет переданную версию для защиты от коллизий.
         update_data — словарь с полями title и/или description.
         Возвращает обновлённую доску.
         """
@@ -137,11 +138,15 @@ class BoardRepository:
             board = await session.get(BoardOrm, board_id)
             if not board:
                 raise ValueError("Доска не найдена")
-            
+
+            if board.version != version:
+                raise ValueError("Данные были изменены другим пользователем. Обновите страницу и попробуйте снова.")
+
             for key, value in update_data.items():
                 if hasattr(board, key):
                     setattr(board, key, value)
-            
+
+            board.version += 1
             await session.commit()
             await session.refresh(board)
             return board
