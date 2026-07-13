@@ -27,22 +27,10 @@ class CardRepository:
 
 
     @classmethod
-    async def create_card(
-        cls,
-        column_id: int,
-        title: str,
-        description: str | None,
-        order: int | None,
-        author_id: int,
-        assignee_id: int | None,
-        due_date: str | None,
-        priority: Priority | None,
-        file_id: int | None
-    ) -> CardOrm:
-        """
-        Создаёт карточку в колонке. Требуется writer/owner.
-        """
-        # Получаем колонку, чтобы узнать board_id и проверить права
+    async def create_card(cls, column_id: int, title: str, description: str | None, order: int | None,
+                          author_id: int, assignee_id: int | None, due_date: str | None,
+                          priority: Priority | None, file_id: int | None) -> CardOrm:
+        """Создаёт карточку в колонке. Требуется writer/owner."""
         async with new_session() as session:
             column = await session.get(ColumnOrm, column_id)
             if not column:
@@ -53,7 +41,6 @@ class CardRepository:
                 raise ValueError("Недостаточно прав для создания карточки")
 
             if order is None:
-                # Максимальный order в колонке + 1
                 max_order_query = select(func.max(CardOrm.order)).where(CardOrm.column_id == column_id)
                 result = await session.execute(max_order_query)
                 max_order = result.scalar_one_or_none()
@@ -77,14 +64,8 @@ class CardRepository:
 
 
     @classmethod
-    async def get_cards(
-        cls,
-        column_id: int,
-        cursor: str | None = None,
-        direction: str = "after",
-        limit: int = 10
-    ) -> tuple[list[CardOrm], str | None, str | None]:
-        """Возвращает карточки в колонке с пагинацией (по order, затем id)."""
+    async def get_cards(cls, column_id: int, cursor: str | None = None, direction: str = "after", limit: int = 10) -> tuple[list[CardOrm], str | None, str | None]:
+        """Возвращает карточки в колонке с пагинацией."""
         async with new_session() as session:
             base_query = select(CardOrm).where(CardOrm.column_id == column_id)
 
@@ -139,16 +120,12 @@ class CardRepository:
 
     @classmethod
     async def update_card(cls, card_id: int, user_id: int, version: int, update_data: dict) -> CardOrm:
-        """
-        Обновляет данные карточки (кроме column_id и order). Требуется writer/owner.
-        Проверяет версию для защиты от коллизий.
-        """
+        """Обновляет данные карточки (кроме column_id и order). Требуется writer/owner. Проверяет версию."""
         async with new_session() as session:
             card = await session.get(CardOrm, card_id)
             if not card:
                 raise ValueError("Карточка не найдена")
 
-            # Получаем board_id через колонку
             column = await session.get(ColumnOrm, card.column_id)
             if not column:
                 raise ValueError("Колонка не найдена")
@@ -172,9 +149,7 @@ class CardRepository:
 
     @classmethod
     async def delete_card(cls, card_id: int, user_id: int) -> None:
-        """
-        Удаляет карточку. Требуется writer/owner.
-        """
+        """Удаляет карточку. Требуется writer/owner."""
         async with new_session() as session:
             card = await session.get(CardOrm, card_id)
             if not card:
@@ -194,10 +169,7 @@ class CardRepository:
 
     @classmethod
     async def move_card(cls, card_id: int, target_column_id: int, new_order: int, user_id: int) -> CardOrm:
-        """
-        Перемещает карточку в другую колонку и/или изменяет порядок.
-        Требуется writer/owner в обеих досках (если колонки в разных досках — запрещено).
-        """
+        """Перемещает карточку в другую колонку и/или изменяет порядок. Требуется writer/owner."""
         async with new_session() as session:
             card = await session.get(CardOrm, card_id)
             if not card:
@@ -208,33 +180,24 @@ class CardRepository:
             if not source_column or not target_column:
                 raise ValueError("Колонка не найдена")
 
-            # Проверяем, что колонки принадлежат одной доске
             if source_column.board_id != target_column.board_id:
                 raise ValueError("Нельзя перемещать карточку между разными досками")
 
-            # Проверяем права на доску (writer/owner)
             role = await cls.get_member_role(source_column.board_id, user_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для перемещения карточки")
 
             old_column_id = card.column_id
 
-            # Обновляем order у карточки и при необходимости сдвигаем другие карточки
             if old_column_id == target_column_id:
-                # Перемещение внутри одной колонки
                 if card.order == new_order:
-                    # Ничего не делаем
                     pass
                 else:
-                    # Сдвигаем карточки в старой колонке после удаления
-                    await cls._shift_orders(session, old_column_id, card.order, None)  # убираем карточку
-                    # Освобождаем место в новой позиции
+                    await cls._shift_orders(session, old_column_id, card.order, None)
                     await cls._shift_orders(session, target_column_id, None, new_order, exclude_id=card.id)
                     card.order = new_order
             else:
-                # Удаляем из старой колонки
                 await cls._shift_orders(session, old_column_id, card.order, None)
-                # Вставляем в новую колонку
                 await cls._shift_orders(session, target_column_id, None, new_order)
                 card.column_id = target_column_id
                 card.order = new_order
@@ -246,13 +209,8 @@ class CardRepository:
 
     @classmethod
     async def _shift_orders(cls, session, column_id: int, from_order: int | None, to_order: int | None, exclude_id: int | None = None):
-        """
-        Вспомогательный метод для сдвига order карточек в колонке при вставке/удалении.
-        Если from_order задан — удаляем карточку с этим order (сдвиг вниз на 1 для order > from_order).
-        Если to_order задан — вставляем карточку на позицию to_order (сдвиг вверх на 1 для order >= to_order).
-        """
+        """Сдвигает order карточек при вставке/удалении."""
         if from_order is not None:
-            # Сдвиг вниз (уменьшение order) для карточек с order > from_order
             stmt = (
                 update(CardOrm)
                 .where(CardOrm.column_id == column_id, CardOrm.order > from_order)
@@ -263,7 +221,6 @@ class CardRepository:
             await session.execute(stmt)
 
         if to_order is not None:
-            # Сдвиг вверх (увеличение order) для карточек с order >= to_order
             stmt = (
                 update(CardOrm)
                 .where(CardOrm.column_id == column_id, CardOrm.order >= to_order)

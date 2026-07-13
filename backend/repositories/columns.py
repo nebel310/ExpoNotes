@@ -30,15 +30,18 @@ class ColumnRepository:
 
     @classmethod
     async def create_column(cls, board_id: int, title: str, order: int | None, user_id: int) -> ColumnOrm:
-        """
-        Создаёт колонку в доске. Требуется роль writer или owner.
-        """
-        role = await cls.get_member_role(board_id, user_id)
-        if role not in (MemberRole.WRITER, MemberRole.OWNER):
-            raise ValueError("Недостаточно прав для создания колонки")
-
+        """Создаёт колонку в доске. Требуется роль writer или owner."""
         async with new_session() as session:
-            # Если order не задан, ставим максимальный + 1
+            # Проверка существования доски
+            board = await session.get(BoardOrm, board_id)
+            if not board:
+                raise ValueError("Доска не найдена")
+
+            # Проверка прав
+            role = await cls.get_member_role(board_id, user_id)
+            if role not in (MemberRole.WRITER, MemberRole.OWNER):
+                raise ValueError("Недостаточно прав для создания колонки")
+
             if order is None:
                 max_order_query = select(ColumnOrm.order).where(ColumnOrm.board_id == board_id).order_by(ColumnOrm.order.desc()).limit(1)
                 result = await session.execute(max_order_query)
@@ -119,10 +122,7 @@ class ColumnRepository:
 
     @classmethod
     async def update_column(cls, column_id: int, user_id: int, version: int, update_data: dict) -> ColumnOrm:
-        """
-        Обновляет колонку. Требуется writer/owner.
-        Проверяет версию для защиты от коллизий.
-        """
+        """Обновляет колонку. Требуется writer/owner. Проверяет версию для защиты от коллизий."""
         async with new_session() as session:
             column = await session.get(ColumnOrm, column_id)
             if not column:
@@ -147,9 +147,7 @@ class ColumnRepository:
 
     @classmethod
     async def delete_column(cls, column_id: int, user_id: int) -> None:
-        """
-        Удаляет колонку со всеми карточками. Требуется writer/owner.
-        """
+        """Удаляет колонку со всеми карточками. Требуется writer/owner."""
         async with new_session() as session:
             column = await session.get(ColumnOrm, column_id)
             if not column:

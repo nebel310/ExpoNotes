@@ -25,6 +25,7 @@ class CommentRepository:
 
     @classmethod
     async def get_member_role(cls, board_id: int, user_id: int) -> MemberRole | None:
+        """Возвращает роль пользователя в доске или None."""
         async with new_session() as session:
             board = await session.get(BoardOrm, board_id)
             if board and board.owner_id == user_id:
@@ -39,15 +40,13 @@ class CommentRepository:
 
     @classmethod
     async def create_comment(cls, card_id: int, author_id: int, text: str) -> CommentOrm:
-        """
-        Добавляет комментарий к карточке. Доступно любому участнику доски (reader+).
-        """
+        """Добавляет комментарий к карточке. Доступно любому участнику доски."""
         board_id = await cls._get_board_id_by_card(card_id)
         if not board_id:
             raise ValueError("Карточка не найдена")
 
         role = await cls.get_member_role(board_id, author_id)
-        if not role:  # не член доски
+        if not role:
             raise ValueError("Недостаточно прав для комментирования")
 
         async with new_session() as session:
@@ -116,6 +115,7 @@ class CommentRepository:
 
     @classmethod
     async def get_comment_by_id(cls, comment_id: int) -> CommentOrm | None:
+        """Получает комментарий по ID."""
         async with new_session() as session:
             query = select(CommentOrm).where(CommentOrm.id == comment_id)
             result = await session.execute(query)
@@ -124,9 +124,7 @@ class CommentRepository:
 
     @classmethod
     async def update_comment(cls, comment_id: int, author_id: int, text: str) -> CommentOrm:
-        """
-        Обновляет комментарий. Только автор может редактировать.
-        """
+        """Обновляет комментарий. Только автор может редактировать."""
         async with new_session() as session:
             comment = await session.get(CommentOrm, comment_id)
             if not comment:
@@ -143,15 +141,12 @@ class CommentRepository:
 
     @classmethod
     async def delete_comment(cls, comment_id: int, user_id: int) -> None:
-        """
-        Удаляет комментарий. Может удалить автор, либо владелец доски.
-        """
+        """Удаляет комментарий. Может удалить автор или владелец доски."""
         async with new_session() as session:
             comment = await session.get(CommentOrm, comment_id)
             if not comment:
                 raise ValueError("Комментарий не найден")
 
-            # Определяем board_id
             card = await session.get(CardOrm, comment.card_id)
             if not card:
                 raise ValueError("Карточка не найдена")
@@ -160,7 +155,6 @@ class CommentRepository:
                 raise ValueError("Колонка не найдена")
             board_id = column.board_id
 
-            # Проверка прав
             is_author = comment.author_id == user_id
             is_owner = False
             board = await session.get(BoardOrm, board_id)
