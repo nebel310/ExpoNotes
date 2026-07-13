@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.auth import UserOrm
 from repositories.board_members import BoardMemberRepository
@@ -16,6 +17,8 @@ router = APIRouter(
     prefix="/boards/{board_id}/members",
     tags=["Board Members"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -62,7 +65,8 @@ async def add_member(
         return member
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -108,7 +112,8 @@ async def get_members(
         )
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
     return BoardMemberListResponse(
@@ -147,7 +152,8 @@ async def update_member_role(
         return member
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -177,5 +183,6 @@ async def remove_member(
         return SuccessResponse(detail="Участник успешно удалён")
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")

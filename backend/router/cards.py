@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.auth import UserOrm
 from repositories.cards import CardRepository
@@ -23,6 +24,8 @@ cards_router = APIRouter(
     prefix="/cards",
     tags=["Cards"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -72,7 +75,8 @@ async def create_card(
         return card
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -118,7 +122,8 @@ async def get_cards_in_column(
         )
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
     return CardListResponse(
@@ -156,7 +161,8 @@ async def get_card(
         return card
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -190,7 +196,8 @@ async def update_card(
         return card
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -214,7 +221,8 @@ async def delete_card(
         return SuccessResponse(detail="Карточка успешно удалена")
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -248,5 +256,6 @@ async def move_card(
         return card
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")

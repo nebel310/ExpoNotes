@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.auth import UserOrm
 from repositories.columns import ColumnRepository
@@ -19,6 +20,9 @@ column_router = APIRouter(
     prefix="/columns",
     tags=["Columns"]
 )
+
+logger = logging.getLogger(__name__)
+
 
 
 def handle_value_error(e: ValueError):
@@ -62,7 +66,8 @@ async def create_column(
         return column
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -105,7 +110,8 @@ async def get_columns(
         )
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
     return ColumnListResponse(
@@ -140,7 +146,8 @@ async def get_column(
         return column
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -174,7 +181,8 @@ async def update_column(
         return column
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -198,5 +206,6 @@ async def delete_column(
         return SuccessResponse(detail="Колонка успешно удалена")
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")

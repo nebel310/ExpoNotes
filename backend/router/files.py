@@ -1,3 +1,4 @@
+import logging
 from fastapi import(
     APIRouter, Depends, HTTPException,
     UploadFile, status, File,
@@ -21,6 +22,9 @@ router = APIRouter(
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 
 @router.post(
     "/",
@@ -41,7 +45,8 @@ async def upload_file(
     """
     try:
         file_bytes = await file.read()
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=400, detail="Ошибка чтения файла")
 
     try:
@@ -57,7 +62,8 @@ async def upload_file(
     except StorageError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+        logger.exception(str(e))
+        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера")
 
 
 @router.get(
@@ -91,7 +97,8 @@ async def old_dowload_file(
         raise HTTPException(status_code=404, detail="Файл не найден")
     except StorageError as e:
         raise HTTPException(status_code=502, detail=str(e))
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
 
@@ -130,7 +137,8 @@ async def download_file(
             start_str, end_str = ranges.split("-") if "-" in ranges else (ranges, "")
             start = int(start_str.strip()) if start_str.strip() else 0
             end = int(end_str.strip()) if end_str.strip() else file_size - 1
-        except Exception:
+        except Exception as e:
+            logger.exception(str(e))
             raise HTTPException(status_code=400, detail="Некорректный заголовок Range")
 
         if start < 0 or end >= file_size or start > end:
@@ -192,7 +200,8 @@ async def get_file_info(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+        logger.exception(str(e))
+        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера")
 
 
 @router.delete(
@@ -220,7 +229,8 @@ async def delete_file(
     except StorageError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+        logger.exception(str(e))
+        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера")
 
 
 """ 

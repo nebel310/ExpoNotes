@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.auth import UserOrm
 from repositories.search import SearchRepository
@@ -12,6 +13,8 @@ router = APIRouter(
     prefix="/search",
     tags=["Search"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -66,7 +69,8 @@ async def search_cards(
         )
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
     return SearchCardResponse(

@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 
 from models.auth import UserOrm
@@ -19,6 +20,8 @@ router = APIRouter(
     prefix="/auth",
     tags=['Пользователи']
 )
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -51,6 +54,7 @@ async def register_user(user_data: SUserRegister):
         raise HTTPException(status_code=400, detail=str(e))
         
     except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(
             status_code=500,
             detail="Внутренняя ошибка сервера"
@@ -94,6 +98,7 @@ async def login_user(login_data: SUserLogin):
         raise
         
     except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(
             status_code=500,
             detail="Внутренняя ошибка сервера"
@@ -132,6 +137,7 @@ async def refresh_token(refresh_token: str):
         raise
         
     except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(
             status_code=500,
             detail="Внутренняя ошибка сервера"
@@ -164,6 +170,7 @@ async def logout(
         return LogoutResponse(success=True)
         
     except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(
             status_code=500,
             detail="Внутренняя ошибка сервера"
@@ -189,6 +196,7 @@ async def get_current_user_info(current_user: UserOrm = Depends(get_current_user
         return SUser.model_validate(current_user)
         
     except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(
             status_code=500,
             detail="Внутренняя ошибка сервера"
@@ -229,6 +237,7 @@ async def update_current_user(
     except StorageError as e:
         raise HTTPException(status_code=502, detail=f"Ошибка хранилища: {str(e)}")
     except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
 

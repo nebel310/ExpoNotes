@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.auth import UserOrm
 from repositories.boards import BoardRepository
@@ -14,6 +15,8 @@ router = APIRouter(
     prefix="/boards",
     tags=["Boards"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -54,7 +57,8 @@ async def create_board(
         return board
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -94,7 +98,8 @@ async def get_boards(
         )
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
     return BoardListResponse(
@@ -129,7 +134,8 @@ async def get_board(
         return board
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -163,7 +169,8 @@ async def update_board(
         return board
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -187,5 +194,6 @@ async def delete_board(
         return SuccessResponse(detail="Доска успешно удалена")
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")

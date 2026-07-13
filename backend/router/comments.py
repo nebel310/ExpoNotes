@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.auth import UserOrm
 from repositories.comments import CommentRepository
@@ -21,6 +22,8 @@ comments_router = APIRouter(
     prefix="/comments",
     tags=["Comments"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -62,7 +65,8 @@ async def add_comment(
         return comment
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -111,7 +115,8 @@ async def get_comments(
         )
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
     return CommentListResponse(
@@ -152,7 +157,8 @@ async def get_comment(
         return comment
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -182,7 +188,8 @@ async def update_comment(
         return comment
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
 
@@ -206,5 +213,6 @@ async def delete_comment(
         return SuccessResponse(detail="Комментарий успешно удалён")
     except ValueError as e:
         handle_value_error(e)
-    except Exception:
+    except Exception as e:
+        logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
