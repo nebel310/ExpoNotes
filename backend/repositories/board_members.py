@@ -26,29 +26,28 @@ class BoardMemberRepository:
 
     @classmethod
     async def _check_owner(cls, board_id: int, user_id: int) -> bool:
-        """Проверяет, является ли пользователь владельцем доски."""
-        async with new_session() as session:
-            query = select(BoardOrm).where(
-                and_(BoardOrm.id == board_id, BoardOrm.owner_id == user_id)
-            )
-            result = await session.execute(query)
-            return result.scalars().first() is not None
-
-
-    @classmethod
-    async def add_member(cls, board_id: int, user_id: int, role: MemberRole, requester_id: int) -> BoardMemberOrm:
-        """
-        Добавляет участника в доску. Только владелец может добавлять.
-        Возвращает запись BoardMemberOrm.
-        """
-        if not await cls._check_owner(board_id, requester_id):
-            raise ValueError("Только владелец может добавлять участников")
-
+        """Проверяет, является ли пользователь владельцем доски (сама доска должна существовать)."""
         async with new_session() as session:
             board = await session.get(BoardOrm, board_id)
             if not board:
                 raise ValueError("Доска не найдена")
+            return board.owner_id == user_id
 
+
+    @classmethod
+    async def add_member(cls, board_id: int, user_id: int, role: MemberRole, requester_id: int) -> BoardMemberOrm:
+        """Добавляет участника в доску. Только владелец может добавлять."""
+        async with new_session() as session:
+            # 1. Проверить существование доски
+            board = await session.get(BoardOrm, board_id)
+            if not board:
+                raise ValueError("Доска не найдена")
+
+            # 2. Проверить права requester'а
+            if board.owner_id != requester_id:
+                raise ValueError("Только владелец может добавлять участников")
+
+            # 3. Проверить, не состоит ли пользователь уже в доске
             existing = await session.execute(
                 select(BoardMemberOrm).where(
                     and_(BoardMemberOrm.board_id == board_id, BoardMemberOrm.user_id == user_id)
@@ -66,6 +65,7 @@ class BoardMemberRepository:
             await session.commit()
             await session.refresh(member)
             return member
+
 
     @classmethod
     async def get_members(cls, board_id: int, cursor: str | None = None, direction: str = "after", limit: int = 10):
@@ -115,18 +115,20 @@ class BoardMemberRepository:
 
     @classmethod
     async def update_member_role(cls, board_id: int, member_id: int, new_role: MemberRole, requester_id: int) -> BoardMemberOrm:
-        """
-        Изменяет роль участника. Только владелец доски может менять роли.
-        Проверяет, что участник принадлежит указанной доске.
-        """
+        """Изменяет роль участника. Только владелец доски."""
         async with new_session() as session:
+            # 1. Найти запись участника и проверить, что она относится к указанной доске
             member = await session.get(BoardMemberOrm, member_id)
             if not member:
                 raise ValueError("Запись участника не найдена")
             if member.board_id != board_id:
                 raise ValueError("Участник не принадлежит указанной доске")
 
-            if not await cls._check_owner(board_id, requester_id):
+            # 2. Проверить права
+            board = await session.get(BoardOrm, board_id)
+            if not board:
+                raise ValueError("Доска не найдена")
+            if board.owner_id != requester_id:
                 raise ValueError("Только владелец может изменять роли участников")
 
             member.role = new_role
@@ -137,18 +139,20 @@ class BoardMemberRepository:
 
     @classmethod
     async def remove_member(cls, board_id: int, member_id: int, requester_id: int) -> None:
-        """
-        Удаляет участника из доски. Только владелец доски может удалять.
-        Проверяет, что участник принадлежит указанной доске.
-        """
+        """Удаляет участника. Только владелец доски, кроме удаления самого владельца."""
         async with new_session() as session:
+            # 1. Найти запись участника и проверить принадлежность доске
             member = await session.get(BoardMemberOrm, member_id)
             if not member:
                 raise ValueError("Запись участника не найдена")
             if member.board_id != board_id:
                 raise ValueError("Участник не принадлежит указанной доске")
 
-            if not await cls._check_owner(board_id, requester_id):
+            # 2. Проверить права
+            board = await session.get(BoardOrm, board_id)
+            if not board:
+                raise ValueError("Доска не найдена")
+            if board.owner_id != requester_id:
                 raise ValueError("Только владелец может удалять участников")
 
             if member.role == MemberRole.OWNER:

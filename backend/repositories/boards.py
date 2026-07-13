@@ -139,6 +139,9 @@ class BoardRepository:
             if not board:
                 raise ValueError("Доска не найдена")
 
+            if board.owner_id != user_id:
+                raise ValueError("Только владелец может редактировать доску")
+
             if board.version != version:
                 raise ValueError("Данные были изменены другим пользователем. Обновите страницу и попробуйте снова.")
 
@@ -164,5 +167,9 @@ class BoardRepository:
             board = await session.get(BoardOrm, board_id)
             if not board:
                 raise ValueError("Доска не найдена")
+
+            if board.owner_id != user_id:
+                raise ValueError("Только владелец может удалить доску")
+
             await session.delete(board)
             await session.commit()
