@@ -145,6 +145,7 @@ async def update_member_role(
     """
     try:
         member = await BoardMemberRepository.update_member_role(
+            board_id=board_id,
             member_id=member_id,
             new_role=update_data.role,
             requester_id=current_user.id
@@ -177,6 +178,7 @@ async def remove_member(
     """
     try:
         await BoardMemberRepository.remove_member(
+            board_id=board_id,
             member_id=member_id,
             requester_id=current_user.id
         )

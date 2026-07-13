@@ -25,7 +25,6 @@ class SearchRepository:
         к которым пользователь имеет доступ.
         """
         async with new_session() as session:
-            # Подзапрос: ID досок, где пользователь член
             accessible_boards = (
                 select(BoardOrm.id)
                 .outerjoin(BoardMemberOrm, BoardOrm.id == BoardMemberOrm.board_id)
@@ -39,7 +38,6 @@ class SearchRepository:
                 .subquery()
             )
 
-            # ID колонок в этих досках
             accessible_columns = (
                 select(ColumnOrm.id)
                 .where(ColumnOrm.board_id.in_(select(accessible_boards)))
@@ -86,11 +84,12 @@ class SearchRepository:
                     query = base_query.order_by(CardOrm.id.desc())
                 query = query.limit(limit + 1)
                 result = await session.execute(query)
-                items = result.scalars().all()
-                items.reverse()
-                cards = items[:limit]
-                next_id = cards[-1].id if cursor_id is not None and len(items) > limit else None
-                prev_id = cards[0].id if len(items) > limit else None
+                desc_items = result.scalars().all()
+                has_previous = len(desc_items) > limit
+                page_items_desc = desc_items[:limit]
+                cards = list(reversed(page_items_desc))
+                next_id = cards[-1].id if cards else None
+                prev_id = cards[0].id if has_previous else None
             else:
                 raise ValueError("Недопустимое направление")
 
