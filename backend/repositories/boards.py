@@ -50,7 +50,6 @@ class BoardRepository:
         Возвращает (список досок, next_cursor, previous_cursor).
         """
         async with new_session() as session:
-            # Базовый запрос: доски, где пользователь owner или член
             base_query = (
                 select(BoardOrm)
                 .outerjoin(BoardMemberOrm, BoardOrm.id == BoardMemberOrm.board_id)
@@ -66,7 +65,7 @@ class BoardRepository:
             cursor_id = None
             if cursor:
                 try:
-                    cursor_id = int(cursor)  # будем передавать уже декодированный int
+                    cursor_id = int(cursor)
                 except (ValueError, TypeError):
                     raise ValueError("Некорректный курсор")
 
@@ -89,11 +88,12 @@ class BoardRepository:
                     query = base_query.order_by(BoardOrm.id.desc())
                 query = query.limit(limit + 1)
                 result = await session.execute(query)
-                items = result.scalars().all()
-                items.reverse()
-                boards = items[:limit]
-                next_id = boards[-1].id if cursor_id is not None and len(items) > limit else None
-                prev_id = boards[0].id if len(items) > limit else None
+                desc_items = result.scalars().all()
+                has_previous = len(desc_items) > limit
+                page_items_desc = desc_items[:limit]
+                boards = list(reversed(page_items_desc))
+                next_id = boards[-1].id if boards else None
+                prev_id = boards[0].id if has_previous else None
             else:
                 raise ValueError("Недопустимое направление (должно быть 'after' или 'before')")
 

@@ -100,11 +100,12 @@ class CommentRepository:
                     query = base_query.order_by(CommentOrm.id.desc())
                 query = query.limit(limit + 1)
                 result = await session.execute(query)
-                items = result.scalars().all()
-                items.reverse()
-                comments = items[:limit]
-                next_id = comments[-1].id if cursor_id is not None and len(items) > limit else None
-                prev_id = comments[0].id if len(items) > limit else None
+                desc_items = result.scalars().all()
+                has_previous = len(desc_items) > limit
+                page_items_desc = desc_items[:limit]
+                comments = list(reversed(page_items_desc))
+                next_id = comments[-1].id if comments else None
+                prev_id = comments[0].id if has_previous else None
             else:
                 raise ValueError("Недопустимое направление")
 

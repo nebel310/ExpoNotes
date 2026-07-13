@@ -94,11 +94,12 @@ class ColumnRepository:
                     query = base_query.order_by(ColumnOrm.order.desc(), ColumnOrm.id.desc())
                 query = query.limit(limit + 1)
                 result = await session.execute(query)
-                items = result.scalars().all()
-                items.reverse()
-                columns = items[:limit]
-                next_id = columns[-1].id if cursor_id is not None and len(items) > limit else None
-                prev_id = columns[0].id if len(items) > limit else None
+                desc_items = result.scalars().all()
+                has_previous = len(desc_items) > limit
+                page_items_desc = desc_items[:limit]
+                columns = list(reversed(page_items_desc))
+                next_id = columns[-1].id if columns else None
+                prev_id = columns[0].id if has_previous else None
             else:
                 raise ValueError("Недопустимое направление")
 
