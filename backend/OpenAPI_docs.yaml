@@ -1,0 +1,1742 @@
+openapi: 3.0.0
+info:
+  title: Kanban Board API
+  version: 1.0.0
+  description: API для управления канбан-доской (аналог Trello)
+servers:
+  - url: http://localhost:3001
+    description: Локальный сервер
+components:
+  securitySchemes:
+    Bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    # Общие
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Произошла ошибка"
+    ValidationErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Поле title обязательно"
+    SuccessResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "Операция выполнена успешно"
+    CursorPaginationParams:
+      type: object
+      properties:
+        cursor:
+          type: string
+          description: "Закодированный курсор для пагинации"
+        direction:
+          type: string
+          enum: [after, before]
+          default: after
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+    # Users (существующие)
+    SUserRegister:
+      type: object
+      required: [username, email, password, password_confirm]
+      properties:
+        username: { type: string }
+        email: { type: string, format: email }
+        password: { type: string }
+        password_confirm: { type: string }
+      example:
+        username: "john_doe"
+        email: "john@example.com"
+        password: "securepass"
+        password_confirm: "securepass"
+    SUserLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+      example:
+        email: "john@example.com"
+        password: "securepass"
+    SUserUpdate:
+      type: object
+      properties:
+        username: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        avatar_id: { type: integer, nullable: true }
+        bio: { type: string, nullable: true, maxLength: 500 }
+        birth_date: { type: string, format: date, nullable: true }
+        gender: { type: string, enum: [male, female], nullable: true }
+      example:
+        username: "new_name"
+        bio: "Привет, я новый пользователь"
+    SUser:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        email: { type: string, format: email }
+        avatar_id: { type: integer, nullable: true }
+        bio: { type: string, nullable: true }
+        birth_date: { type: string, format: date, nullable: true }
+        gender: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+      example:
+        id: 1
+        username: "john_doe"
+        email: "john@example.com"
+        avatar_id: null
+        bio: null
+        birth_date: null
+        gender: null
+        created_at: "2024-01-01T12:00:00Z"
+    SUserListResponse:
+      type: object
+      properties:
+        users: { type: array, items: { $ref: "#/components/schemas/SUser" } }
+        next_cursor: { type: string, nullable: true }
+        previous_cursor: { type: string, nullable: true }
+    RegisterResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        user_id: { type: integer, example: 1 }
+        message: { type: string, example: "Регистрация прошла успешно" }
+    LoginResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, example: "Вы вошли в аккаунт" }
+        access_token: { type: string, example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+        refresh_token: { type: string, example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+        token_type: { type: string, example: "bearer" }
+    RefreshResponse:
+      type: object
+      properties:
+        access_token: { type: string, example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+        token_type: { type: string, example: "bearer" }
+    LogoutResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+    # Boards
+    SBoardCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, example: "Моя доска" }
+        description: { type: string, nullable: true, example: "Описание доски" }
+    SBoardUpdate:
+      type: object
+      properties:
+        title: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+      example:
+        title: "Новое название доски"
+        description: "Обновлённое описание"
+    BoardResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        title: { type: string, example: "Моя доска" }
+        description: { type: string, nullable: true, example: "Описание доски" }
+        owner_id: { type: integer, example: 10 }
+        created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+        updated_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+    BoardListResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/BoardResponse" } }
+        next_cursor: { type: string, nullable: true }
+        previous_cursor: { type: string, nullable: true }
+    # Board Members
+    SBoardMemberAdd:
+      type: object
+      required: [user_id, role]
+      properties:
+        user_id: { type: integer, example: 5 }
+        role: { type: string, enum: [reader, writer, owner], example: "writer" }
+    SBoardMemberUpdate:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string, enum: [reader, writer, owner], example: "owner" }
+    BoardMemberResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        board_id: { type: integer, example: 1 }
+        user_id: { type: integer, example: 5 }
+        role: { type: string, example: "writer" }
+        created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+        user: { $ref: "#/components/schemas/SUser" }
+    BoardMemberListResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/BoardMemberResponse" } }
+        next_cursor: { type: string, nullable: true }
+        previous_cursor: { type: string, nullable: true }
+    # Columns
+    SColumnCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, example: "В работе" }
+        order: { type: integer, nullable: true, example: 1 }
+    SColumnUpdate:
+      type: object
+      properties:
+        title: { type: string, nullable: true, example: "Новое название" }
+        order: { type: integer, nullable: true, example: 2 }
+    ColumnResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        board_id: { type: integer, example: 1 }
+        title: { type: string, example: "В работе" }
+        order: { type: integer, example: 1 }
+        created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+    ColumnListResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/ColumnResponse" } }
+        next_cursor: { type: string, nullable: true }
+        previous_cursor: { type: string, nullable: true }
+    # Cards
+    SCardCreate:
+      type: object
+      required: [title, column_id]
+      properties:
+        title: { type: string, example: "Задача 1" }
+        description: { type: string, nullable: true, example: "Описание задачи" }
+        column_id: { type: integer, example: 3 }
+        order: { type: integer, nullable: true, example: 1 }
+        assignee_id: { type: integer, nullable: true, example: 5 }
+        due_date: { type: string, format: date-time, nullable: true, example: "2025-02-01T10:00:00Z" }
+        priority: { type: string, enum: [low, medium, high], nullable: true, example: "high" }
+        file_id: { type: integer, nullable: true, example: null }
+    SCardUpdate:
+      type: object
+      properties:
+        title: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        column_id: { type: integer, nullable: true }
+        order: { type: integer, nullable: true }
+        assignee_id: { type: integer, nullable: true }
+        due_date: { type: string, format: date-time, nullable: true }
+        priority: { type: string, enum: [low, medium, high], nullable: true }
+        file_id: { type: integer, nullable: true }
+      example:
+        title: "Обновлённая задача"
+        description: "Новое описание"
+        priority: "low"
+    SCardMove:
+      type: object
+      required: [column_id, order]
+      properties:
+        column_id: { type: integer, example: 4 }
+        order: { type: integer, example: 2 }
+    CardResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 101 }
+        column_id: { type: integer, example: 3 }
+        title: { type: string, example: "Задача 1" }
+        description: { type: string, nullable: true, example: "Описание задачи" }
+        order: { type: integer, example: 1 }
+        author_id: { type: integer, example: 10 }
+        assignee_id: { type: integer, nullable: true, example: 5 }
+        due_date: { type: string, format: date-time, nullable: true, example: "2025-02-01T10:00:00Z" }
+        priority: { type: string, nullable: true, example: "high" }
+        file_id: { type: integer, nullable: true, example: null }
+        created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+        updated_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+    CardListResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/CardResponse" } }
+        next_cursor: { type: string, nullable: true }
+        previous_cursor: { type: string, nullable: true }
+    # Comments
+    SCommentCreate:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, example: "Это важный комментарий" }
+    SCommentUpdate:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, example: "Обновлённый текст комментария" }
+    CommentResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        card_id: { type: integer, example: 101 }
+        author_id: { type: integer, example: 10 }
+        text: { type: string, example: "Это важный комментарий" }
+        created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+    CommentListResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/CommentResponse" } }
+        next_cursor: { type: string, nullable: true }
+        previous_cursor: { type: string, nullable: true }
+    # Audit Log
+    AuditLogResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        user_id: { type: integer, example: 10 }
+        action: { type: string, example: "UPDATE_CARD" }
+        entity_type: { type: string, example: "card" }
+        entity_id: { type: integer, example: 101 }
+        changes: { type: object, nullable: true, example: { "title": "old", "new": "new" } }
+        created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+    AuditLogListResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/AuditLogResponse" } }
+        next_cursor: { type: string, nullable: true }
+        previous_cursor: { type: string, nullable: true }
+    # Search
+    SearchCardResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/CardResponse" } }
+        next_cursor: { type: string, nullable: true }
+        previous_cursor: { type: string, nullable: true }
+security:
+  - Bearer: []
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Регистрация пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SUserRegister" }
+      responses:
+        "201":
+          description: Успешная регистрация
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegisterResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Вход в систему
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SUserLogin" }
+      responses:
+        "200":
+          description: Успешный вход
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResponse" }
+        "400":
+          description: Неверный email или пароль
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Обновление access токена
+      parameters:
+        - name: refresh_token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Новый access токен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RefreshResponse" }
+        "400":
+          description: Неверный refresh токен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Выход из системы
+      security:
+        - Bearer: []
+      responses:
+        "200":
+          description: Успешный выход
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LogoutResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Получить информацию о текущем пользователе
+      security:
+        - Bearer: []
+      responses:
+        "200":
+          description: Данные пользователя
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SUser" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    patch:
+      tags: [Auth]
+      summary: Обновить профиль текущего пользователя
+      security:
+        - Bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SUserUpdate" }
+      responses:
+        "200":
+          description: Обновлённые данные пользователя
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SUser" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Файл не найден (при обновлении аватарки)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /auth/users:
+    get:
+      tags: [Auth]
+      summary: Список пользователей с пагинацией
+      security:
+        - Bearer: []
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [after, before]
+            default: after
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Список пользователей
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SUserListResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /boards/:
+    post:
+      tags: [Boards]
+      summary: Создать доску
+      security:
+        - Bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SBoardCreate" }
+      responses:
+        "201":
+          description: Созданная доска
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BoardResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    get:
+      tags: [Boards]
+      summary: Получить список досок (доступных пользователю) с пагинацией
+      security:
+        - Bearer: []
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [after, before]
+            default: after
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Список досок
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BoardListResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /boards/{board_id}:
+    get:
+      tags: [Boards]
+      summary: Получить доску по ID
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Данные доски
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BoardResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Доска не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    patch:
+      tags: [Boards]
+      summary: Обновить доску (только владелец)
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SBoardUpdate" }
+      responses:
+        "200":
+          description: Обновлённая доска
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BoardResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён (не владелец)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Доска не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      tags: [Boards]
+      summary: Удалить доску (только владелец)
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Доска удалена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Доска не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /boards/{board_id}/members/:
+    post:
+      tags: [Board Members]
+      summary: Добавить участника доски (только владелец)
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SBoardMemberAdd" }
+      responses:
+        "201":
+          description: Участник добавлен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BoardMemberResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Доска или пользователь не найдены
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    get:
+      tags: [Board Members]
+      summary: Получить список участников доски с пагинацией
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [after, before]
+            default: after
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Список участников
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BoardMemberListResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /boards/{board_id}/members/{member_id}:
+    patch:
+      tags: [Board Members]
+      summary: Изменить роль участника (только владелец)
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SBoardMemberUpdate" }
+      responses:
+        "200":
+          description: Роль обновлена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BoardMemberResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Запись не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      tags: [Board Members]
+      summary: Удалить участника (только владелец)
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Участник удалён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Запись не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /boards/{board_id}/columns/:
+    post:
+      tags: [Columns]
+      summary: Создать колонку в доске
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SColumnCreate" }
+      responses:
+        "201":
+          description: Колонка создана
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ColumnResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён (недостаточно прав)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Доска не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    get:
+      tags: [Columns]
+      summary: Список колонок доски с пагинацией
+      security:
+        - Bearer: []
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [after, before]
+            default: after
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Список колонок
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ColumnListResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /columns/{column_id}:
+    get:
+      tags: [Columns]
+      summary: Получить колонку по ID
+      security:
+        - Bearer: []
+      parameters:
+        - name: column_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Данные колонки
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ColumnResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Колонка не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    patch:
+      tags: [Columns]
+      summary: Обновить колонку (требуется Writer)
+      security:
+        - Bearer: []
+      parameters:
+        - name: column_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SColumnUpdate" }
+      responses:
+        "200":
+          description: Колонка обновлена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ColumnResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Колонка не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      tags: [Columns]
+      summary: Удалить колонку (вместе с карточками, требуется Writer)
+      security:
+        - Bearer: []
+      parameters:
+        - name: column_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Колонка удалена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Колонка не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /columns/{column_id}/cards/:
+    post:
+      tags: [Cards]
+      summary: Создать карточку в колонке
+      security:
+        - Bearer: []
+      parameters:
+        - name: column_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SCardCreate" }
+      responses:
+        "201":
+          description: Карточка создана
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Колонка не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    get:
+      tags: [Cards]
+      summary: Список карточек в колонке с пагинацией
+      security:
+        - Bearer: []
+      parameters:
+        - name: column_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [after, before]
+            default: after
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Список карточек
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardListResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /cards/{card_id}:
+    get:
+      tags: [Cards]
+      summary: Получить карточку по ID
+      security:
+        - Bearer: []
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Данные карточки
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Карточка не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    patch:
+      tags: [Cards]
+      summary: Обновить карточку (требуется Writer)
+      security:
+        - Bearer: []
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SCardUpdate" }
+      responses:
+        "200":
+          description: Карточка обновлена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Карточка не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      tags: [Cards]
+      summary: Удалить карточку (требуется Writer)
+      security:
+        - Bearer: []
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Карточка удалена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Карточка не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /cards/{card_id}/move:
+    post:
+      tags: [Cards]
+      summary: Переместить карточку в другую колонку и/или изменить порядок
+      security:
+        - Bearer: []
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SCardMove" }
+      responses:
+        "200":
+          description: Карточка перемещена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Карточка или колонка не найдены
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /cards/{card_id}/comments/:
+    post:
+      tags: [Comments]
+      summary: Добавить комментарий к карточке
+      security:
+        - Bearer: []
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SCommentCreate" }
+      responses:
+        "201":
+          description: Комментарий добавлен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Карточка не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    get:
+      tags: [Comments]
+      summary: Список комментариев к карточке с пагинацией
+      security:
+        - Bearer: []
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [after, before]
+            default: after
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Список комментариев
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentListResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /comments/{comment_id}:
+    get:
+      tags: [Comments]
+      summary: Получить комментарий по ID
+      security:
+        - Bearer: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Данные комментария
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Комментарий не найден
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    patch:
+      tags: [Comments]
+      summary: Обновить комментарий (только автор)
+      security:
+        - Bearer: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SCommentUpdate" }
+      responses:
+        "200":
+          description: Комментарий обновлён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentResponse" }
+        "400":
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён (не автор)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Комментарий не найден
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      tags: [Comments]
+      summary: Удалить комментарий (только автор или владелец доски)
+      security:
+        - Bearer: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Комментарий удалён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Комментарий не найден
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /search/cards:
+    get:
+      tags: [Search]
+      summary: Поиск карточек по тексту (title, description) во всех доступных досках
+      security:
+        - Bearer: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "срочно"
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [after, before]
+            default: after
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Результаты поиска
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchCardResponse" }
+        "400":
+          description: Параметр q обязателен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationErrorResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /audit-log/:
+    get:
+      tags: [Audit Log]
+      summary: Получить список записей аудита с фильтрацией и пагинацией
+      security:
+        - Bearer: []
+      parameters:
+        - name: entity_type
+          in: query
+          schema:
+            type: string
+            enum: [board, column, card, comment, file, board_member]
+        - name: entity_id
+          in: query
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [after, before]
+            default: after
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Список записей аудита
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditLogListResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /audit-log/{log_id}:
+    get:
+      tags: [Audit Log]
+      summary: Получить запись аудита по ID
+      security:
+        - Bearer: []
+      parameters:
+        - name: log_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Данные записи
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditLogResponse" }
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Запись не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
