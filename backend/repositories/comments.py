@@ -46,7 +46,7 @@ class CommentRepository:
         if not board_id:
             raise ValueError("Карточка не найдена")
 
-        role = await cls.(board_id, author_id)
+        role = await cls.get_member_role(board_id, author_id)
         if not role:  # не член доски
             raise ValueError("Недостаточно прав для комментирования")
 
