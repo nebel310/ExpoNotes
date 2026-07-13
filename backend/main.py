@@ -18,14 +18,17 @@ from minio.client import s3_client
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения."""
-    # await delete_tables()
-    # print('База очищена')
+    await delete_tables()
+    print('База очищена')
     
     await create_tables()
     print('База готова к работе')
     
-    await s3_client.ensure_bucket()
-    print(f'Бакет {s3_client.bucket_name} создан')
+    try:
+        await s3_client.ensure_bucket()
+        print(f'Бакет {s3_client.bucket_name} создан')
+    except Exception as e:
+        print(f'Ошибка при запуске MINIO {str(e)}')
     
     yield
     
@@ -40,18 +43,18 @@ def custom_openapi():
         return app.openapi_schema
         
     openapi_schema = get_openapi(
-        title="FastAPI Base Template - Разработано Григорьевым Владиславом Алексеевичем",
+        title="ExpoNotes - API клона Trello",
         version="1.0.0",
-        description="""Базовый шаблон FastAPI с JWT аутентификацией
+        description="""RESTful API для управления канбан-доской
     
-**Разработчик:** Григорьев Владислав Алексеевич
+**Разработчик:** Григорьев Владислав Алексеевич \n
 **Контакты:** 
 - Телеграм: @vlados7529
 - Телефон: +7 (916) 054 44-35  
 - GitHub: github.com/nebel310
-- Email: m2316174@edu.misis.ru
+- Email: vladislav75290@gmail.com
 
-*Этот бэкенд был создан как базовый шаблон для быстрого старта проектов*""",
+*Этот бэкенд был создан в рамкам летней практики от ВК*""",
         routes=app.routes,
     )
     
@@ -112,5 +115,5 @@ if __name__ == "__main__":
         "main:app",
         reload=True,
         port=3001,
-        host="0.0.0.0"
+        # host="0.0.0.0"
     )
