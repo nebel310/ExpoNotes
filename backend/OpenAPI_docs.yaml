@@ -232,8 +232,6 @@ components:
       properties:
         title: { type: string, nullable: true }
         description: { type: string, nullable: true }
-        column_id: { type: integer, nullable: true }
-        order: { type: integer, nullable: true }
         assignee_id: { type: integer, nullable: true }
         due_date: { type: string, format: date-time, nullable: true }
         priority: { type: string, enum: [low, medium, high], nullable: true }
