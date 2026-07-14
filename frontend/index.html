@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ExpoNotes · Auth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/auth.css">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- Форма входа -->
+      <form id="login-form" class="auth-form active">
+        <h2 class="auth-title">Welcome back</h2>
+        <p class="auth-subtitle">Log in to your account</p>
+
+        <div class="field-group">
+          <label class="label" for="login-email">Email</label>
+          <input class="input-field" type="email" id="login-email" name="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <div class="field-group">
+          <label class="label" for="login-password">Password</label>
+          <input class="input-field" type="password" id="login-password" name="password" placeholder="········" autocomplete="current-password" required>
+        </div>
+
+        <div id="login-error" class="error-message"></div>
+
+        <button type="submit" class="btn btn-full">Log in</button>
+
+        <p class="switch-text">
+          Don't have an account?
+          <button type="button" class="btn-ghost switch-btn" data-switch="register-form">Sign up</button>
+        </p>
+      </form>
+
+      <!-- Форма регистрации -->
+      <form id="register-form" class="auth-form">
+        <h2 class="auth-title">Create account</h2>
+        <p class="auth-subtitle">Start your journey with ExpoNotes</p>
+
+        <div class="field-group">
+          <label class="label" for="reg-username">Username</label>
+          <input class="input-field" type="text" id="reg-username" name="username" placeholder="john_doe" required>
+        </div>
+        <div class="field-group">
+          <label class="label" for="reg-email">Email</label>
+          <input class="input-field" type="email" id="reg-email" name="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <div class="field-group">
+          <label class="label" for="reg-password">Password</label>
+          <input class="input-field" type="password" id="reg-password" name="password" placeholder="········" autocomplete="new-password" required>
+        </div>
+        <div class="field-group">
+          <label class="label" for="reg-password-confirm">Confirm password</label>
+          <input class="input-field" type="password" id="reg-password-confirm" name="password_confirm" placeholder="········" autocomplete="new-password" required>
+        </div>
+
+        <div id="register-error" class="error-message"></div>
+
+        <button type="submit" class="btn btn-full">Create account</button>
+
+        <p class="switch-text">
+          Already have an account?
+          <button type="button" class="btn-ghost switch-btn" data-switch="login-form">Log in</button>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <script src="scripts/config.js"></script>
+  <script src="scripts/api.js"></script>
+  <script src="scripts/auth.js"></script>
+</body>
+</html>

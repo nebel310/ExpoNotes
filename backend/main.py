@@ -25,8 +25,8 @@ from minio.client import s3_client
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения."""
-    await delete_tables()
-    print('База очищена')
+    # await delete_tables()
+    # print('База очищена')
     
     await create_tables()
     print('База готова к работе')
@@ -140,7 +140,7 @@ app.openapi = custom_openapi
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
