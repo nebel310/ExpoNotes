@@ -185,7 +185,6 @@ components:
         user_id: { type: integer, example: 5 }
         role: { type: string, example: "writer" }
         created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
-        user: { $ref: "#/components/schemas/SUser" }
     BoardMemberListResponse:
       type: object
       properties:
@@ -201,9 +200,11 @@ components:
         order: { type: integer, nullable: true, example: 1 }
     SColumnUpdate:
       type: object
+      required: [version]
       properties:
         title: { type: string, nullable: true, example: "Новое название" }
         order: { type: integer, nullable: true, example: 2 }
+        version: { type: integer }
     ColumnResponse:
       type: object
       properties:
@@ -222,11 +223,10 @@ components:
     # Cards
     SCardCreate:
       type: object
-      required: [title, column_id]
+      required: [title]
       properties:
         title: { type: string, example: "Задача 1" }
         description: { type: string, nullable: true, example: "Описание задачи" }
-        column_id: { type: integer, example: 3 }
         order: { type: integer, nullable: true, example: 1 }
         assignee_id: { type: integer, nullable: true, example: 5 }
         due_date: { type: string, format: date-time, nullable: true, example: "2025-02-01T10:00:00Z" }
