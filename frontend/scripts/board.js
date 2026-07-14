@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const boardTitleEl = document.getElementById('board-title');
   const roleBadge = document.getElementById('role-badge');
 
-  // Модальное окно
+  // Модальное окно (колонка/карточка)
   const modalOverlay = document.getElementById('modal-overlay');
   const modalTitle = document.getElementById('modal-title');
   const modalInput = document.getElementById('modal-input');
@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (userRes.ok) {
         const user = await userRes.json();
         currentUserId = user.id;
+        window.currentUserId = user.id;          // <-- глобально для card.js
       }
       await loadBoardData();
     } catch (e) {
@@ -95,6 +96,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!boardRes.ok) throw new Error('Board not found');
       const board = await boardRes.json();
       boardTitleEl.textContent = board.title;
+
+      // Сохраняем владельца доски глобально
+      window.currentBoardOwner = board.owner_id;
 
       await loadUserRole();
 
@@ -234,6 +238,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
 
+    // Обработчик клика на карточку – открытие детального просмотра
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.card-delete')) return; // не открывать при клике на удаление
+        const cardId = card.dataset.cardId;
+        if (window.currentBoardOwner && window.openCardDetail) {
+          window.openCardDetail(cardId, window.currentBoardOwner, userRole);
+        }
+      });
+    });
+
     // Drag-and-drop
     if (isWriter) {
       initDragAndDrop();
@@ -287,7 +302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     this.classList.remove('drag-over');
     if (!draggedCard) return;
 
-    const targetColumn = this; // это .column
+    const targetColumn = this; // .column
     const targetColumnId = targetColumn.dataset.columnId;
     const cardId = draggedCard.dataset.cardId;
     if (!targetColumnId || !cardId) return;
@@ -331,6 +346,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     api.clearTokens();
     window.location.href = 'index.html';
   });
+
+  // Функция обновления доски, доступная извне (для card.js)
+  window.refreshBoard = () => loadBoardData();
 
   await init();
 });

@@ -1,0 +1,58 @@
+.card-detail-modal {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+#card-fields .input-field,
+#card-fields select {
+  margin-bottom: 0.8rem;
+}
+
+#comments-container {
+  max-height: 250px;
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
+}
+
+.comment {
+  background-color: var(--surface-1);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.comment-author {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.comment-text {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0.3rem 0;
+}
+
+.comment-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.comment-actions {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.2rem;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.comment:hover .comment-actions {
+  opacity: 1;
+}
+
+#comments-pagination button {
+  font-size: 0.8rem;
+}
