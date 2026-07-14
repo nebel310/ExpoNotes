@@ -1,4 +1,5 @@
 from sqlalchemy import select, and_, update, func
+from datetime import datetime
 from database import new_session
 from models.cards import CardOrm, Priority
 from models.columns import ColumnOrm
@@ -12,6 +13,20 @@ from models.audit_log import AuditLogOrm, ActionType, EntityType
 
 class CardRepository:
     """Репозиторий для работы с карточками."""
+
+    @staticmethod
+    def _serialize_changes(changes: dict) -> dict:
+        """Рекурсивно преобразует datetime в ISO строки для JSON-сериализации."""
+        result = {}
+        for k, v in changes.items():
+            if isinstance(v, datetime):
+                result[k] = v.isoformat()
+            elif isinstance(v, dict):
+                result[k] = CardRepository._serialize_changes(v)
+            else:
+                result[k] = v
+        return result
+
 
     @classmethod
     async def get_member_role(cls, board_id: int, user_id: int) -> MemberRole | None:
@@ -67,22 +82,23 @@ class CardRepository:
             session.add(card)
             await session.flush()
 
-            # Запись в аудит
+            changes = cls._serialize_changes({
+                "column_id": column_id,
+                "title": title,
+                "description": description,
+                "order": order,
+                "assignee_id": assignee_id,
+                "due_date": due_date,
+                "priority": priority,
+                "file_id": file_id
+            })
+
             audit = AuditLogOrm(
                 user_id=author_id,
                 action=ActionType.CREATE,
                 entity_type=EntityType.CARD,
                 entity_id=card.id,
-                changes={
-                    "column_id": column_id,
-                    "title": title,
-                    "description": description,
-                    "order": order,
-                    "assignee_id": assignee_id,
-                    "due_date": due_date,
-                    "priority": priority,
-                    "file_id": file_id
-                }
+                changes=changes
             )
             session.add(audit)
 
@@ -184,6 +200,7 @@ class CardRepository:
             card.version += 1
 
             if changes:
+                changes = cls._serialize_changes(changes)
                 audit = AuditLogOrm(
                     user_id=user_id,
                     action=ActionType.UPDATE,
@@ -214,7 +231,6 @@ class CardRepository:
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для удаления карточки")
 
-            # Запись в аудит перед удалением
             audit = AuditLogOrm(
                 user_id=user_id,
                 action=ActionType.DELETE,
@@ -264,7 +280,6 @@ class CardRepository:
                 card.column_id = target_column_id
                 card.order = new_order
 
-            # Запись в аудит (MOVE)
             audit_changes = {
                 "old_column_id": old_column_id,
                 "old_order": old_order,
