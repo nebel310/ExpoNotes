@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   const boardId = urlParams.get('id');
+  window.boardId = boardId;
   if (!boardId) {
     window.location.href = 'boards.html';
     return;
@@ -83,6 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentUserId = user.id;
         window.currentUserId = user.id;          // <-- глобально для card.js
       }
+      window.userRole = userRole;
       await loadBoardData();
     } catch (e) {
       alert('Failed to initialize board');
@@ -119,7 +121,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (membersRes.ok) {
         const data = await membersRes.json();
         const member = data.items?.find(m => m.user_id === currentUserId);
-        if (member) userRole = member.role;
+        if (member) {
+            userRole = member.role;
+            window.userRole = userRole;
+        }
       }
     } catch (e) {}
     roleBadge.textContent = userRole;

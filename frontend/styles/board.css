@@ -124,3 +124,73 @@
   color: var(--text-secondary);
   text-transform: uppercase;
 }
+
+/* ========== Стили модального окна участников ========== */
+.members-modal {
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.members-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-1);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.member-name {
+  font-weight: 500;
+}
+
+.member-role-select {
+  background: var(--surface-2);
+  color: white;
+  border: 1px solid var(--surface-1);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.6rem;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.member-role-select:disabled {
+  opacity: 0.6;
+}
+
+.remove-member-btn {
+  opacity: 0;
+  transition: opacity var(--transition);
+  margin-left: 0.5rem;
+}
+
+.member-item:hover .remove-member-btn {
+  opacity: 1;
+}

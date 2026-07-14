@@ -19,6 +19,7 @@
       <h1 id="board-title" class="board-title">Loading...</h1>
     </div>
     <div class="top-bar-right">
+      <button id="members-btn" class="btn btn-ghost">Members</button>
       <span id="role-badge" class="badge"></span>
       <button id="logout-btn" class="btn btn-ghost">Log out</button>
     </div>
@@ -98,10 +99,42 @@
     </div>
   </div>
 
+  <!-- Модальное окно участников -->
+  <div id="members-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal members-modal">
+      <div class="modal-header">
+        <h3>Board Members</h3>
+        <button class="btn btn-icon" id="members-close-btn">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="members-list" class="members-list">
+        <!-- динамически -->
+      </div>
+      <div id="members-pagination" class="flex-row" style="justify-content:center; margin-top:0.5rem;"></div>
+
+      <!-- Добавление участника (только для owner) -->
+      <div id="add-member-section" style="margin-top:1.5rem; display:none;">
+        <hr>
+        <label class="label">Add Member</label>
+        <div class="flex-row" style="gap:0.5rem;">
+          <input class="input-field" id="new-member-email" placeholder="user@example.com" style="flex:1;"/>
+          <select class="input-field" id="new-member-role" style="width:auto;">
+            <option value="reader">Reader</option>
+            <option value="writer">Writer</option>
+            <option value="owner">Owner</option>
+          </select>
+        </div>
+        <button class="btn mt-1" id="add-member-btn">Add</button>
+      </div>
+    </div>
+  </div>
+
   <script src="scripts/config.js"></script>
   <script src="scripts/api.js"></script>
   <script src="scripts/utils.js"></script>
   <script src="scripts/board.js"></script>
   <script src="scripts/card.js"></script>
+  <script src="scripts/members.js"></script>
 </body>
 </html>
