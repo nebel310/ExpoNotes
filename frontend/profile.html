@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ExpoNotes · Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles/main.css"/>
+  <link rel="stylesheet" href="styles/profile.css"/>
+</head>
+<body>
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <button id="back-btn" class="btn btn-ghost">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Boards
+      </button>
+      <h1 class="board-title">My Profile</h1>
+    </div>
+    <div class="top-bar-right">
+      <button id="logout-btn" class="btn btn-ghost">Log out</button>
+    </div>
+  </header>
+  <main class="content">
+    <div class="profile-card">
+      <div class="profile-header">
+        <div class="avatar large-avatar" id="profile-avatar">--</div>
+        <h2 id="profile-username">username</h2>
+      </div>
+      <form id="profile-form" class="profile-form">
+        <div class="field-group">
+          <label class="label">Username</label>
+          <input class="input-field" type="text" id="edit-username" required/>
+        </div>
+        <div class="field-group">
+          <label class="label">Email</label>
+          <input class="input-field" type="email" id="edit-email" required/>
+        </div>
+        <div class="field-group">
+          <label class="label">Bio</label>
+          <textarea class="input-field" id="edit-bio" rows="3" maxlength="500"></textarea>
+        </div>
+        <div class="flex-row">
+          <div class="field-group" style="flex:1">
+            <label class="label">Gender</label>
+            <select class="input-field" id="edit-gender">
+              <option value="">Not set</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+          <div class="field-group" style="flex:1">
+            <label class="label">Birth date</label>
+            <input class="input-field" type="date" id="edit-birth"/>
+          </div>
+        </div>
+        <div id="profile-error" class="error-message"></div>
+        <div class="flex-row" style="justify-content: flex-end; margin-top:1rem;">
+          <button type="button" class="btn btn-ghost" id="cancel-edit-btn">Cancel</button>
+          <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </main>
+  <script src="scripts/config.js"></script>
+  <script src="scripts/api.js"></script>
+  <script src="scripts/utils.js"></script>
+  <script src="scripts/profile.js"></script>
+</body>
+</html>
