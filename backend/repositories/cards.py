@@ -1,10 +1,11 @@
 from sqlalchemy import select, and_, update, func
 from database import new_session
-from models.auth import UserOrm
 from models.cards import CardOrm, Priority
 from models.columns import ColumnOrm
 from models.board_members import BoardMemberOrm, MemberRole
 from models.boards import BoardOrm
+from models.auth import UserOrm
+from models.audit_log import AuditLogOrm, ActionType, EntityType
 
 
 
@@ -64,6 +65,27 @@ class CardRepository:
                 file_id=file_id
             )
             session.add(card)
+            await session.flush()
+
+            # Запись в аудит
+            audit = AuditLogOrm(
+                user_id=author_id,
+                action=ActionType.CREATE,
+                entity_type=EntityType.CARD,
+                entity_id=card.id,
+                changes={
+                    "column_id": column_id,
+                    "title": title,
+                    "description": description,
+                    "order": order,
+                    "assignee_id": assignee_id,
+                    "due_date": due_date,
+                    "priority": priority,
+                    "file_id": file_id
+                }
+            )
+            session.add(audit)
+
             await session.commit()
             await session.refresh(card)
             return card
@@ -143,11 +165,34 @@ class CardRepository:
             if card.version != version:
                 raise ValueError("Данные карточки были изменены другим пользователем. Обновите страницу и попробуйте снова.")
 
+            old_values = {
+                "title": card.title,
+                "description": card.description,
+                "assignee_id": card.assignee_id,
+                "due_date": card.due_date,
+                "priority": card.priority,
+                "file_id": card.file_id
+            }
+            changes = {}
             for key, value in update_data.items():
                 if hasattr(card, key):
+                    old_val = getattr(card, key)
+                    if old_val != value:
+                        changes[key] = {"old": old_val, "new": value}
                     setattr(card, key, value)
 
             card.version += 1
+
+            if changes:
+                audit = AuditLogOrm(
+                    user_id=user_id,
+                    action=ActionType.UPDATE,
+                    entity_type=EntityType.CARD,
+                    entity_id=card_id,
+                    changes=changes
+                )
+                session.add(audit)
+
             await session.commit()
             await session.refresh(card)
             return card
@@ -168,6 +213,16 @@ class CardRepository:
             role = await cls.get_member_role(column.board_id, user_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для удаления карточки")
+
+            # Запись в аудит перед удалением
+            audit = AuditLogOrm(
+                user_id=user_id,
+                action=ActionType.DELETE,
+                entity_type=EntityType.CARD,
+                entity_id=card_id,
+                changes=None
+            )
+            session.add(audit)
 
             await session.delete(card)
             await session.commit()
@@ -194,6 +249,7 @@ class CardRepository:
                 raise ValueError("Недостаточно прав для перемещения карточки")
 
             old_column_id = card.column_id
+            old_order = card.order
 
             if old_column_id == target_column_id:
                 if card.order == new_order:
@@ -207,6 +263,22 @@ class CardRepository:
                 await cls._shift_orders(session, target_column_id, None, new_order)
                 card.column_id = target_column_id
                 card.order = new_order
+
+            # Запись в аудит (MOVE)
+            audit_changes = {
+                "old_column_id": old_column_id,
+                "old_order": old_order,
+                "new_column_id": card.column_id,
+                "new_order": card.order
+            }
+            audit = AuditLogOrm(
+                user_id=user_id,
+                action=ActionType.MOVE,
+                entity_type=EntityType.CARD,
+                entity_id=card_id,
+                changes=audit_changes
+            )
+            session.add(audit)
 
             await session.commit()
             await session.refresh(card)

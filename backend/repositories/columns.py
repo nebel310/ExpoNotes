@@ -3,6 +3,7 @@ from database import new_session
 from models.columns import ColumnOrm
 from models.board_members import BoardMemberOrm, MemberRole
 from models.boards import BoardOrm
+from models.audit_log import AuditLogOrm, ActionType, EntityType
 
 
 
@@ -54,6 +55,18 @@ class ColumnRepository:
                 order=order
             )
             session.add(column)
+            await session.flush()  # чтобы получить column.id
+
+            # Запись в аудит
+            audit = AuditLogOrm(
+                user_id=user_id,
+                action=ActionType.CREATE,
+                entity_type=EntityType.COLUMN,
+                entity_id=column.id,
+                changes={"board_id": board_id, "title": title, "order": order}
+            )
+            session.add(audit)
+
             await session.commit()
             await session.refresh(column)
             return column
@@ -135,11 +148,28 @@ class ColumnRepository:
             if column.version != version:
                 raise ValueError("Данные колонки были изменены другим пользователем. Обновите страницу и попробуйте снова.")
 
+            # Сохраняем старые значения для аудита
+            old_values = {"title": column.title, "order": column.order}
+            changes = {}
             for key, value in update_data.items():
                 if hasattr(column, key):
+                    old_val = getattr(column, key)
+                    if old_val != value:
+                        changes[key] = {"old": old_val, "new": value}
                     setattr(column, key, value)
 
             column.version += 1
+
+            if changes:
+                audit = AuditLogOrm(
+                    user_id=user_id,
+                    action=ActionType.UPDATE,
+                    entity_type=EntityType.COLUMN,
+                    entity_id=column_id,
+                    changes=changes
+                )
+                session.add(audit)
+
             await session.commit()
             await session.refresh(column)
             return column
@@ -156,6 +186,16 @@ class ColumnRepository:
             role = await cls.get_member_role(column.board_id, user_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для удаления колонки")
+
+            # Запись в аудит перед удалением
+            audit = AuditLogOrm(
+                user_id=user_id,
+                action=ActionType.DELETE,
+                entity_type=EntityType.COLUMN,
+                entity_id=column_id,
+                changes=None
+            )
+            session.add(audit)
 
             await session.delete(column)
             await session.commit()

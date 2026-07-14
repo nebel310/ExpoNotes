@@ -7,6 +7,7 @@ from sqlalchemy import select, delete
 
 from database import new_session
 from models.files import FileOrm
+from models.audit_log import AuditLogOrm, ActionType, EntityType
 
 from minio.client import s3_client
 from minio.exceptions import ObjectNotFoundError, StorageError
@@ -71,6 +72,23 @@ class FileRepository:
             
             session.add(file_to_insert)
             try:
+                await session.flush()  # чтобы получить file_to_insert.id
+
+                # Запись в аудит
+                audit = AuditLogOrm(
+                    user_id=uploaded_by,
+                    action=ActionType.CREATE,
+                    entity_type=EntityType.FILE,
+                    entity_id=file_to_insert.id,
+                    changes={
+                        "original_name": original_name,
+                        "size": len(file_bytes),
+                        "content_type": content_type,
+                        "extension": extension
+                    }
+                )
+                session.add(audit)
+
                 await session.commit()
                 await session.refresh(file_to_insert)
             except Exception:
@@ -177,6 +195,16 @@ class FileRepository:
                 pass
             except Exception as e:
                 raise StorageError(f"Не удалось удалить объект MinIO: {e}") from e
+
+            # Запись в аудит перед удалением записи из БД
+            audit = AuditLogOrm(
+                user_id=file_data.uploaded_by,
+                action=ActionType.DELETE,
+                entity_type=EntityType.FILE,
+                entity_id=file_id,
+                changes=None
+            )
+            session.add(audit)
 
             await session.delete(file_data)
             await session.commit()

@@ -5,6 +5,7 @@ from models.cards import CardOrm
 from models.columns import ColumnOrm
 from models.board_members import BoardMemberOrm, MemberRole
 from models.boards import BoardOrm
+from models.audit_log import AuditLogOrm, ActionType, EntityType
 
 
 
@@ -56,6 +57,18 @@ class CommentRepository:
                 text=text
             )
             session.add(comment)
+            await session.flush()  # чтобы получить comment.id
+
+            # Запись в аудит
+            audit = AuditLogOrm(
+                user_id=author_id,
+                action=ActionType.CREATE,
+                entity_type=EntityType.COMMENT,
+                entity_id=comment.id,
+                changes={"card_id": card_id, "text": text}
+            )
+            session.add(audit)
+
             await session.commit()
             await session.refresh(comment)
             return comment
@@ -133,7 +146,19 @@ class CommentRepository:
             if comment.author_id != author_id:
                 raise ValueError("Только автор может редактировать комментарий")
 
+            old_text = comment.text
             comment.text = text
+
+            # Запись в аудит
+            audit = AuditLogOrm(
+                user_id=author_id,
+                action=ActionType.UPDATE,
+                entity_type=EntityType.COMMENT,
+                entity_id=comment_id,
+                changes={"text": {"old": old_text, "new": text}}
+            )
+            session.add(audit)
+
             await session.commit()
             await session.refresh(comment)
             return comment
@@ -163,6 +188,16 @@ class CommentRepository:
 
             if not (is_author or is_owner):
                 raise ValueError("Недостаточно прав для удаления комментария")
+
+            # Запись в аудит перед удалением
+            audit = AuditLogOrm(
+                user_id=user_id,
+                action=ActionType.DELETE,
+                entity_type=EntityType.COMMENT,
+                entity_id=comment_id,
+                changes=None
+            )
+            session.add(audit)
 
             await session.delete(comment)
             await session.commit()

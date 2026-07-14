@@ -2,13 +2,14 @@ from sqlalchemy import select, or_, and_, delete, update
 from database import new_session
 from models.boards import BoardOrm
 from models.board_members import BoardMemberOrm, MemberRole
+from models.audit_log import AuditLogOrm, ActionType, EntityType
 
 
 
 
 class BoardRepository:
     """Репозиторий для работы с досками."""
-    
+
     @classmethod
     async def create_board(cls, user_id: int, title: str, description: str | None = None) -> BoardOrm:
         """
@@ -23,7 +24,7 @@ class BoardRepository:
             )
             session.add(board)
             await session.flush()  # чтобы получить board.id
-            
+
             # Добавляем владельца в члены доски
             member = BoardMemberOrm(
                 board_id=board.id,
@@ -31,6 +32,17 @@ class BoardRepository:
                 role=MemberRole.OWNER
             )
             session.add(member)
+
+            # Запись в аудит
+            audit = AuditLogOrm(
+                user_id=user_id,
+                action=ActionType.CREATE,
+                entity_type=EntityType.BOARD,
+                entity_id=board.id,
+                changes={"title": title, "description": description}
+            )
+            session.add(audit)
+
             await session.commit()
             await session.refresh(board)
             return board
@@ -145,11 +157,28 @@ class BoardRepository:
             if board.version != version:
                 raise ValueError("Данные были изменены другим пользователем. Обновите страницу и попробуйте снова.")
 
+            # Сохраняем старые значения для аудита
+            old_values = {"title": board.title, "description": board.description}
+            changes = {}
             for key, value in update_data.items():
                 if hasattr(board, key):
+                    old_val = getattr(board, key)
+                    if old_val != value:
+                        changes[key] = {"old": old_val, "new": value}
                     setattr(board, key, value)
 
             board.version += 1
+
+            if changes:
+                audit = AuditLogOrm(
+                    user_id=user_id,
+                    action=ActionType.UPDATE,
+                    entity_type=EntityType.BOARD,
+                    entity_id=board_id,
+                    changes=changes
+                )
+                session.add(audit)
+
             await session.commit()
             await session.refresh(board)
             return board
@@ -170,6 +199,16 @@ class BoardRepository:
 
             if board.owner_id != user_id:
                 raise ValueError("Только владелец может удалить доску")
+
+            # Запись в аудит перед удалением
+            audit = AuditLogOrm(
+                user_id=user_id,
+                action=ActionType.DELETE,
+                entity_type=EntityType.BOARD,
+                entity_id=board_id,
+                changes=None
+            )
+            session.add(audit)
 
             await session.delete(board)
             await session.commit()

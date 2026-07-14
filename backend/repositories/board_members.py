@@ -2,6 +2,7 @@ from sqlalchemy import select, and_, delete
 from database import new_session
 from models.board_members import BoardMemberOrm, MemberRole
 from models.boards import BoardOrm
+from models.audit_log import AuditLogOrm, ActionType, EntityType
 
 
 
@@ -62,6 +63,18 @@ class BoardMemberRepository:
                 role=role
             )
             session.add(member)
+            await session.flush()  # чтобы получить member.id
+
+            # Запись в аудит
+            audit = AuditLogOrm(
+                user_id=requester_id,
+                action=ActionType.CREATE,
+                entity_type=EntityType.BOARD_MEMBER,
+                entity_id=member.id,
+                changes={"board_id": board_id, "user_id": user_id, "role": role}
+            )
+            session.add(audit)
+
             await session.commit()
             await session.refresh(member)
             return member
@@ -131,7 +144,19 @@ class BoardMemberRepository:
             if board.owner_id != requester_id:
                 raise ValueError("Только владелец может изменять роли участников")
 
+            old_role = member.role
             member.role = new_role
+
+            # Запись в аудит
+            audit = AuditLogOrm(
+                user_id=requester_id,
+                action=ActionType.UPDATE,
+                entity_type=EntityType.BOARD_MEMBER,
+                entity_id=member_id,
+                changes={"role": {"old": old_role, "new": new_role}}
+            )
+            session.add(audit)
+
             await session.commit()
             await session.refresh(member)
             return member
@@ -157,6 +182,16 @@ class BoardMemberRepository:
 
             if member.role == MemberRole.OWNER:
                 raise ValueError("Нельзя удалить владельца доски")
+
+            # Запись в аудит перед удалением
+            audit = AuditLogOrm(
+                user_id=requester_id,
+                action=ActionType.DELETE,
+                entity_type=EntityType.BOARD_MEMBER,
+                entity_id=member_id,
+                changes=None
+            )
+            session.add(audit)
 
             await session.delete(member)
             await session.commit()
