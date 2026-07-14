@@ -283,3 +283,36 @@ async def get_users(
         next_cursor=encode_cursor(next_id) if next_id else None,
         previous_cursor=encode_cursor(prev_id) if prev_id else None
     )
+
+
+@router.get(
+    "/users/by-email",
+    response_model=SUser,
+    responses={
+        400: {"model": ValidationErrorResponse, "description": "Параметр email обязателен"},
+        401: {"model": ErrorResponse, "description": "Не авторизован"},
+        404: {"model": ErrorResponse, "description": "Пользователь не найден"},
+        500: {"model": ErrorResponse, "description": "Внутренняя ошибка сервера"}
+    }
+)
+async def get_user_by_email(
+    email: str,
+    current_user: UserOrm = Depends(get_current_user)
+):
+    """
+    Возвращает пользователя по его email.
+    Требует авторизации.
+    """
+    if not email.strip():
+        raise HTTPException(status_code=400, detail="Параметр email обязателен")
+
+    try:
+        user = await UserRepository.get_user_by_email(email)
+        if not user:
+            raise ValueError("Пользователь не найден")
+        return SUser.model_validate(user)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception(str(e))
+        raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")

@@ -524,6 +524,51 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /auth/users/by-email:
+    get:
+      tags: [Auth]
+      summary: Найти пользователя по email
+      security:
+        - Bearer: []
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+          example: "john@example.com"
+      responses:
+        "200":
+          description: Найденный пользователь
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SUser"
+        "400":
+          description: Параметр email обязателен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+        "401":
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /boards/:
     post:
       tags: [Boards]
