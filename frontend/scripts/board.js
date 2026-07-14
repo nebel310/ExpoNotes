@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   let currentUserId = null;
-  let userRole = 'reader'; // по умолчанию
+  let userRole = 'reader';
   let columns = [];
   const boardContainer = document.getElementById('board-container');
   const boardTitleEl = document.getElementById('board-title');
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modalActionBtn = document.getElementById('modal-action-btn');
   const modalCloseBtn = document.getElementById('modal-close-btn');
   const modalCancelBtn = document.getElementById('modal-cancel-btn');
-  let modalContext = { type: '', columnId: null }; // 'column' или 'card'
+  let modalContext = { type: '', columnId: null };
 
   function showModal(type, columnId = null) {
     modalContext = { type, columnId };
@@ -57,8 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       if (modalContext.type === 'column') {
-        // Создать колонку
-        const order = columns.length; // следующий порядок
+        const order = columns.length;
         const res = await api.post(`/boards/${boardId}/columns/`, { title, order });
         if (!res.ok) throw new Error((await res.json()).detail);
       } else if (modalContext.type === 'card' && modalContext.columnId) {
@@ -75,7 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Загрузка информации о пользователе и доске
+  // Инициализация
   async function init() {
     try {
       const userRes = await api.get('/auth/me');
@@ -92,19 +91,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function loadBoardData() {
     try {
-      // Информация о доске
       const boardRes = await api.get(`/boards/${boardId}`);
       if (!boardRes.ok) throw new Error('Board not found');
       const board = await boardRes.json();
       boardTitleEl.textContent = board.title;
 
-      // Определяем роль
       await loadUserRole();
 
-      // Загружаем колонки (все, с пагинацией)
       columns = await fetchAllColumns();
-
-      // Для каждой колонки загружаем карточки
       for (const col of columns) {
         col.cards = await fetchAllCards(col.id);
       }
@@ -131,21 +125,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function fetchAllColumns() {
     let all = [];
     let cursor = null;
-    let direction = 'after';
     while (true) {
-      const params = new URLSearchParams({ direction, limit: 20 });
+      const params = new URLSearchParams({ direction: 'after', limit: 20 });
       if (cursor) params.append('cursor', cursor);
       const res = await api.get(`/boards/${boardId}/columns/?${params}`);
       if (!res.ok) break;
       const data = await res.json();
       all = all.concat(data.items);
-      if (data.next_cursor && direction === 'after') {
-        cursor = data.next_cursor;
-      } else {
-        break;
-      }
+      if (data.next_cursor) cursor = data.next_cursor;
+      else break;
     }
-    // сортируем по order
     all.sort((a, b) => a.order - b.order);
     return all;
   }
@@ -153,19 +142,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function fetchAllCards(columnId) {
     let all = [];
     let cursor = null;
-    let direction = 'after';
     while (true) {
-      const params = new URLSearchParams({ direction, limit: 20 });
+      const params = new URLSearchParams({ direction: 'after', limit: 20 });
       if (cursor) params.append('cursor', cursor);
       const res = await api.get(`/columns/${columnId}/cards/?${params}`);
       if (!res.ok) break;
       const data = await res.json();
       all = all.concat(data.items);
-      if (data.next_cursor && direction === 'after') {
-        cursor = data.next_cursor;
-      } else {
-        break;
-      }
+      if (data.next_cursor) cursor = data.next_cursor;
+      else break;
     }
     all.sort((a, b) => a.order - b.order);
     return all;
@@ -203,13 +188,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       boardContainer.appendChild(columnEl);
     });
 
-    // Кнопка добавления колонки (в конце)
+    // Кнопка добавления колонки
     if (isWriter) {
       const addColBtn = document.createElement('button');
-      addColBtn.className = 'btn add-column-btn';
-      addColBtn.style.flexShrink = '0';
-      addColBtn.style.alignSelf = 'flex-start';
-      addColBtn.textContent = 'Add Column';
+      addColBtn.className = 'btn';
+      addColBtn.style.marginTop = '0.5rem';
+      addColBtn.textContent = '+ Add Column';
       addColBtn.addEventListener('click', () => showModal('column'));
       boardContainer.appendChild(addColBtn);
     }
@@ -224,9 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const res = await api.delete(`/columns/${colId}`);
           if (!res.ok) throw new Error((await res.json()).detail);
           await loadBoardData();
-        } catch (err) {
-          alert(err.message);
-        }
+        } catch (err) { alert(err.message); }
       });
     });
 
@@ -240,9 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const res = await api.delete(`/cards/${cardId}`);
           if (!res.ok) throw new Error((await res.json()).detail);
           await loadBoardData();
-        } catch (err) {
-          alert(err.message);
-        }
+        } catch (err) { alert(err.message); }
       });
     });
 
@@ -254,25 +234,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
 
-    // Инициализация drag & drop
+    // Drag-and-drop
     if (isWriter) {
       initDragAndDrop();
     }
   }
 
+  // ========== Drag & Drop ==========
   function initDragAndDrop() {
     const cards = document.querySelectorAll('.card');
-    const columns = document.querySelectorAll('.column-cards');
+    const columns = document.querySelectorAll('.column');
 
     cards.forEach(card => {
       card.addEventListener('dragstart', handleDragStart);
       card.addEventListener('dragend', handleDragEnd);
     });
 
-    columns.forEach(col => {
-      col.addEventListener('dragover', handleDragOver);
-      col.addEventListener('dragleave', handleDragLeave);
-      col.addEventListener('drop', handleDrop);
+    columns.forEach(column => {
+      column.addEventListener('dragover', handleDragOver);
+      column.addEventListener('dragleave', handleDragLeave);
+      column.addEventListener('drop', handleDrop);
     });
   }
 
@@ -288,7 +269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function handleDragEnd(e) {
     this.classList.remove('dragging');
     draggedCard = null;
-    document.querySelectorAll('.column-cards').forEach(col => col.classList.remove('drag-over'));
+    document.querySelectorAll('.column').forEach(col => col.classList.remove('drag-over'));
   }
 
   function handleDragOver(e) {
@@ -306,17 +287,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     this.classList.remove('drag-over');
     if (!draggedCard) return;
 
-    const targetColumn = this.closest('.column');
-    const targetColumnId = targetColumn?.dataset.columnId;
+    const targetColumn = this; // это .column
+    const targetColumnId = targetColumn.dataset.columnId;
     const cardId = draggedCard.dataset.cardId;
     if (!targetColumnId || !cardId) return;
 
-    // Определяем новый индекс внутри колонки
+    const cardsContainer = targetColumn.querySelector('.column-cards');
     const dropTarget = e.target.closest('.card');
-    const cardsContainer = this;
     let newOrder = 0;
+
     if (dropTarget && dropTarget !== draggedCard) {
-      // Вставляем перед dropTarget, значит order = индекс dropTarget
       const allCards = [...cardsContainer.querySelectorAll('.card')];
       newOrder = allCards.indexOf(dropTarget);
       cardsContainer.insertBefore(draggedCard, dropTarget);
@@ -326,7 +306,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       newOrder = allCards.length - 1;
     }
 
-    // Отправляем move запрос
     try {
       const res = await api.post(`/cards/${cardId}/move`, {
         column_id: parseInt(targetColumnId),
@@ -336,11 +315,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const err = await res.json();
         throw new Error(err.detail || 'Move failed');
       }
-      // Перезагружаем данные для актуального состояния
       await loadBoardData();
     } catch (err) {
       alert(err.message);
-      // Восстанавливаем предыдущее состояние, перезагрузив всё
       await loadBoardData();
     }
   }
