@@ -1,0 +1,107 @@
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--surface-1);
+}
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.board-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+.board-scroll {
+  display: flex;
+  gap: 1.5rem;
+  padding: 2rem;
+  overflow-x: auto;
+  min-height: calc(100vh - 80px);
+  align-items: flex-start;
+}
+.column {
+  flex: 0 0 300px;
+  background-color: var(--surface-2);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 140px);
+}
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+.column-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+.column-cards {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.card {
+  background-color: var(--surface-1);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  margin-bottom: 0.6rem;
+  cursor: grab;
+  transition: background-color var(--transition), transform var(--transition);
+  user-select: none;
+  position: relative;
+}
+.card:hover {
+  background-color: #2a2d2f;
+}
+.card.dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+.card-title {
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-right: 1.5rem;
+}
+.card-delete {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.card:hover .card-delete {
+  opacity: 1;
+}
+.column-footer {
+  margin-top: 0.8rem;
+}
+.add-card-btn {
+  width: 100%;
+}
+.column-delete-btn {
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.column-header:hover .column-delete-btn {
+  opacity: 1;
+}
+.badge {
+  background: var(--surface-1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}

@@ -86,6 +86,17 @@ h1, h2, h3, h4 {
   background: rgba(255,255,255,0.08);
 }
 
+.btn-danger {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px #ff5c5c;
+  color: #ff5c5c;
+}
+
+.btn-danger:hover {
+  background-color: #ff5c5c;
+  color: white;
+}
+
 /* Инпуты */
 .input-field {
   width: 100%;
@@ -164,7 +175,6 @@ h1, h2, h3, h4 {
   margin-bottom: 1.5rem;
 }
 
-/* Flex-строка */
 .flex-row {
   display: flex;
   align-items: center;
