@@ -4,6 +4,7 @@
   align-items: center;
   padding: 1rem 2rem;
   border-bottom: 1px solid var(--surface-1);
+  gap: 1rem;
 }
 .top-bar-left {
   display: flex;
@@ -19,18 +20,13 @@
   font-size: 1.3rem;
   font-weight: 600;
 }
-
-/* Контейнер колонок с переносом */
 .board-scroll {
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
   padding: 2rem;
   align-items: flex-start;
-  overflow-x: visible;
 }
-
-/* Сама колонка */
 .column {
   flex: 0 0 300px;
   background-color: var(--surface-2);
@@ -41,14 +37,11 @@
   max-height: calc(100vh - 160px);
   transition: background-color var(--transition), outline 0.1s;
 }
-
-/* Подсветка колонки при drag-over */
 .column.drag-over {
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
   background-color: #262a2c;
 }
-
 .column-header {
   display: flex;
   justify-content: space-between;
@@ -63,10 +56,8 @@
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
-  min-height: 60px;  /* Чтобы пустая колонка принимала drop */
+  min-height: 60px;
 }
-
-/* Карточка */
 .card {
   background-color: var(--surface-1);
   border-radius: var(--radius-md);
@@ -99,14 +90,12 @@
 .card:hover .card-delete {
   opacity: 1;
 }
-
 .column-footer {
   margin-top: 0.8rem;
 }
 .add-card-btn {
   width: 100%;
 }
-
 .column-delete-btn {
   opacity: 0;
   transition: opacity var(--transition);
@@ -114,7 +103,6 @@
 .column-header:hover .column-delete-btn {
   opacity: 1;
 }
-
 .badge {
   background: var(--surface-1);
   padding: 0.2rem 0.6rem;
@@ -125,72 +113,64 @@
   text-transform: uppercase;
 }
 
-/* ========== Стили модального окна участников ========== */
-.members-modal {
-  max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.members-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.member-item {
+/* Search */
+.search-container {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.3rem;
+}
+.search-input {
+  width: 200px;
+  padding: 0.5rem 0.8rem;
   background: var(--surface-1);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: 0.7rem 1rem;
-  margin-bottom: 0.4rem;
-}
-
-.member-info {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-}
-
-.member-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.member-name {
-  font-weight: 500;
-}
-
-.member-role-select {
-  background: var(--surface-2);
   color: white;
-  border: 1px solid var(--surface-1);
-  border-radius: var(--radius-sm);
-  padding: 0.3rem 0.6rem;
   font-family: 'Poppins', sans-serif;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  transition: border-color var(--transition);
+}
+.search-input:focus {
+  border-color: var(--accent);
   outline: none;
 }
-
-.member-role-select:disabled {
-  opacity: 0.6;
+.search-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
 }
-
-.remove-member-btn {
-  opacity: 0;
-  transition: opacity var(--transition);
-  margin-left: 0.5rem;
+.search-results {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  width: 320px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--surface-1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  padding: 0.5rem;
 }
-
-.member-item:hover .remove-member-btn {
-  opacity: 1;
+.search-result-item {
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.search-result-item:hover {
+  background: var(--surface-1);
+}
+.search-result-title {
+  font-weight: 500;
+}
+.search-result-board {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }

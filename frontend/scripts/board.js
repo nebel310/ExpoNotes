@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   const boardId = urlParams.get('id');
-  window.boardId = boardId;
   if (!boardId) {
     window.location.href = 'boards.html';
     return;
@@ -18,71 +17,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   const boardContainer = document.getElementById('board-container');
   const boardTitleEl = document.getElementById('board-title');
   const roleBadge = document.getElementById('role-badge');
+  const profileLink = document.getElementById('profile-link');
 
-  // Модальное окно (колонка/карточка)
-  const modalOverlay = document.getElementById('modal-overlay');
-  const modalTitle = document.getElementById('modal-title');
-  const modalInput = document.getElementById('modal-input');
-  const modalActionBtn = document.getElementById('modal-action-btn');
-  const modalCloseBtn = document.getElementById('modal-close-btn');
-  const modalCancelBtn = document.getElementById('modal-cancel-btn');
-  let modalContext = { type: '', columnId: null };
+  // Поиск
+  const searchInput = document.getElementById('search-input');
+  const searchBtn = document.getElementById('search-btn');
+  const searchResults = document.getElementById('search-results');
 
-  function showModal(type, columnId = null) {
-    modalContext = { type, columnId };
-    if (type === 'column') {
-      modalTitle.textContent = 'New Column';
-      modalInput.placeholder = 'Column name';
-    } else {
-      modalTitle.textContent = 'New Card';
-      modalInput.placeholder = 'Card title';
-    }
-    modalInput.value = '';
-    modalOverlay.style.display = 'flex';
-    modalInput.focus();
-  }
+  // Сохраним глобально для card.js и members.js
+  window.boardId = boardId;
+  window.currentBoardOwner = null;
+  window.refreshBoard = null;
 
-  function hideModal() {
-    modalOverlay.style.display = 'none';
-  }
-
-  modalCloseBtn.addEventListener('click', hideModal);
-  modalCancelBtn.addEventListener('click', hideModal);
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) hideModal();
-  });
-
-  modalActionBtn.addEventListener('click', async () => {
-    const title = modalInput.value.trim();
-    if (!title) return;
-
-    try {
-      if (modalContext.type === 'column') {
-        const order = columns.length;
-        const res = await api.post(`/boards/${boardId}/columns/`, { title, order });
-        if (!res.ok) throw new Error((await res.json()).detail);
-      } else if (modalContext.type === 'card' && modalContext.columnId) {
-        const column = columns.find(c => c.id == modalContext.columnId);
-        const cards = column?.cards || [];
-        const order = cards.length;
-        const res = await api.post(`/columns/${modalContext.columnId}/cards/`, { title, order });
-        if (!res.ok) throw new Error((await res.json()).detail);
-      }
-      hideModal();
-      await loadBoardData();
-    } catch (err) {
-      alert(err.message);
-    }
-  });
-
-  // Инициализация
   async function init() {
     try {
       const userRes = await api.get('/auth/me');
       if (userRes.ok) {
         const user = await userRes.json();
         currentUserId = user.id;
-        window.currentUserId = user.id;          // <-- глобально для card.js
+        window.currentUserId = user.id;
+        profileLink.textContent = user.username;
       }
       window.userRole = userRole;
       await loadBoardData();
@@ -98,17 +52,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!boardRes.ok) throw new Error('Board not found');
       const board = await boardRes.json();
       boardTitleEl.textContent = board.title;
-
-      // Сохраняем владельца доски глобально
       window.currentBoardOwner = board.owner_id;
 
       await loadUserRole();
-
       columns = await fetchAllColumns();
       for (const col of columns) {
         col.cards = await fetchAllCards(col.id);
       }
-
       renderBoard();
     } catch (err) {
       alert(err.message);
@@ -122,8 +72,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = await membersRes.json();
         const member = data.items?.find(m => m.user_id === currentUserId);
         if (member) {
-            userRole = member.role;
-            window.userRole = userRole;
+          userRole = member.role;
+          window.userRole = userRole;
         }
       }
     } catch (e) {}
@@ -197,7 +147,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       boardContainer.appendChild(columnEl);
     });
 
-    // Кнопка добавления колонки
     if (isWriter) {
       const addColBtn = document.createElement('button');
       addColBtn.className = 'btn';
@@ -207,7 +156,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       boardContainer.appendChild(addColBtn);
     }
 
-    // Обработчики удаления колонок
     document.querySelectorAll('[data-delete-column]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -221,7 +169,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
 
-    // Обработчики удаления карточек
     document.querySelectorAll('[data-delete-card]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -235,7 +182,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
 
-    // Кнопки добавления карточек
     document.querySelectorAll('[data-add-card]').forEach(btn => {
       btn.addEventListener('click', () => {
         const colId = btn.dataset.addCard;
@@ -243,10 +189,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
 
-    // Обработчик клика на карточку – открытие детального просмотра
     document.querySelectorAll('.card').forEach(card => {
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.card-delete')) return; // не открывать при клике на удаление
+        if (e.target.closest('.card-delete')) return;
         const cardId = card.dataset.cardId;
         if (window.currentBoardOwner && window.openCardDetail) {
           window.openCardDetail(cardId, window.currentBoardOwner, userRole);
@@ -254,22 +199,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
 
-    // Drag-and-drop
     if (isWriter) {
       initDragAndDrop();
     }
   }
 
-  // ========== Drag & Drop ==========
+  // Drag & Drop (прежний)
   function initDragAndDrop() {
     const cards = document.querySelectorAll('.card');
     const columns = document.querySelectorAll('.column');
-
     cards.forEach(card => {
       card.addEventListener('dragstart', handleDragStart);
       card.addEventListener('dragend', handleDragEnd);
     });
-
     columns.forEach(column => {
       column.addEventListener('dragover', handleDragOver);
       column.addEventListener('dragleave', handleDragLeave);
@@ -278,44 +220,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   let draggedCard = null;
-
   function handleDragStart(e) {
     draggedCard = this;
     this.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', '');
   }
-
   function handleDragEnd(e) {
     this.classList.remove('dragging');
     draggedCard = null;
     document.querySelectorAll('.column').forEach(col => col.classList.remove('drag-over'));
   }
-
   function handleDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     this.classList.add('drag-over');
   }
-
   function handleDragLeave(e) {
     this.classList.remove('drag-over');
   }
-
   async function handleDrop(e) {
     e.preventDefault();
     this.classList.remove('drag-over');
     if (!draggedCard) return;
-
-    const targetColumn = this; // .column
+    const targetColumn = this;
     const targetColumnId = targetColumn.dataset.columnId;
     const cardId = draggedCard.dataset.cardId;
     if (!targetColumnId || !cardId) return;
-
     const cardsContainer = targetColumn.querySelector('.column-cards');
     const dropTarget = e.target.closest('.card');
     let newOrder = 0;
-
     if (dropTarget && dropTarget !== draggedCard) {
       const allCards = [...cardsContainer.querySelectorAll('.card')];
       newOrder = allCards.indexOf(dropTarget);
@@ -325,16 +259,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       const allCards = [...cardsContainer.querySelectorAll('.card')];
       newOrder = allCards.length - 1;
     }
-
     try {
       const res = await api.post(`/cards/${cardId}/move`, {
         column_id: parseInt(targetColumnId),
         order: newOrder
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Move failed');
-      }
+      if (!res.ok) throw new Error((await res.json()).detail);
       await loadBoardData();
     } catch (err) {
       alert(err.message);
@@ -342,7 +272,100 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Навигация
+  // Поиск
+  async function performSearch() {
+    const query = searchInput.value.trim();
+    if (!query) {
+      searchResults.style.display = 'none';
+      return;
+    }
+    try {
+      const res = await api.get(`/search/cards?q=${encodeURIComponent(query)}&limit=5`);
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+      showSearchResults(data.items);
+    } catch (err) {
+      searchResults.innerHTML = `<div class="search-result-item"><span class="search-result-title" style="color:#ff5c5c;">${err.message}</span></div>`;
+      searchResults.style.display = 'block';
+    }
+  }
+
+  function showSearchResults(cards) {
+    searchResults.innerHTML = '';
+    if (!cards.length) {
+      searchResults.innerHTML = '<div class="search-result-item"><span class="search-result-title" style="color:var(--text-secondary);">No results</span></div>';
+      searchResults.style.display = 'block';
+      return;
+    }
+    cards.forEach(card => {
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.innerHTML = `
+        <span class="search-result-title">${escapeHtml(card.title)}</span>
+        <span class="search-result-board">Board #${card.board_id}</span>
+      `;
+      div.addEventListener('click', () => {
+        window.location.href = `board.html?id=${card.board_id}`;
+      });
+      searchResults.appendChild(div);
+    });
+    searchResults.style.display = 'block';
+  }
+
+  searchBtn.addEventListener('click', performSearch);
+  searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') performSearch();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-container')) {
+      searchResults.style.display = 'none';
+    }
+  });
+
+  // Модалка для колонок/карточек
+  const modalOverlay = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('modal-title');
+  const modalInput = document.getElementById('modal-input');
+  const modalActionBtn = document.getElementById('modal-action-btn');
+  const modalCloseBtn = document.getElementById('modal-close-btn');
+  const modalCancelBtn = document.getElementById('modal-cancel-btn');
+  let modalContext = { type: '', columnId: null };
+
+  function showModal(type, columnId = null) {
+    modalContext = { type, columnId };
+    modalTitle.textContent = type === 'column' ? 'New Column' : 'New Card';
+    modalInput.placeholder = type === 'column' ? 'Column name' : 'Card title';
+    modalInput.value = '';
+    modalOverlay.style.display = 'flex';
+    modalInput.focus();
+  }
+  function hideModal() { modalOverlay.style.display = 'none'; }
+  modalCloseBtn.addEventListener('click', hideModal);
+  modalCancelBtn.addEventListener('click', hideModal);
+  modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) hideModal(); });
+
+  modalActionBtn.addEventListener('click', async () => {
+    const title = modalInput.value.trim();
+    if (!title) return;
+    try {
+      if (modalContext.type === 'column') {
+        const order = columns.length;
+        const res = await api.post(`/boards/${boardId}/columns/`, { title, order });
+        if (!res.ok) throw new Error((await res.json()).detail);
+      } else if (modalContext.type === 'card' && modalContext.columnId) {
+        const column = columns.find(c => c.id == modalContext.columnId);
+        const cards = column?.cards || [];
+        const order = cards.length;
+        const res = await api.post(`/columns/${modalContext.columnId}/cards/`, { title, order });
+        if (!res.ok) throw new Error((await res.json()).detail);
+      }
+      hideModal();
+      await loadBoardData();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
   document.getElementById('back-btn').addEventListener('click', () => {
     window.location.href = 'boards.html';
   });
@@ -352,8 +375,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.href = 'index.html';
   });
 
-  // Функция обновления доски, доступная извне (для card.js)
   window.refreshBoard = () => loadBoardData();
-
   await init();
 });

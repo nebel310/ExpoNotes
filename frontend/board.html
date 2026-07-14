@@ -19,8 +19,17 @@
       <h1 id="board-title" class="board-title">Loading...</h1>
     </div>
     <div class="top-bar-right">
+      <!-- Поиск -->
+      <div class="search-container">
+        <input type="text" class="input-field search-input" id="search-input" placeholder="Search cards..."/>
+        <button class="btn btn-icon search-btn" id="search-btn">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <div class="search-results" id="search-results" style="display:none;"></div>
+      </div>
       <button id="members-btn" class="btn btn-ghost">Members</button>
       <span id="role-badge" class="badge"></span>
+      <a id="profile-link" class="btn btn-ghost" href="profile.html">Profile</a>
       <button id="logout-btn" class="btn btn-ghost">Log out</button>
     </div>
   </header>
@@ -58,7 +67,6 @@
         </button>
       </div>
       <div class="card-detail-body">
-        <!-- Поля карточки -->
         <div id="card-fields">
           <label class="label">Title</label>
           <input class="input-field" id="edit-card-title" disabled/>
@@ -84,10 +92,7 @@
             <button class="btn" id="card-edit-btn">Edit</button>
           </div>
         </div>
-
         <hr>
-
-        <!-- Комментарии -->
         <h4>Comments</h4>
         <div id="comments-container"></div>
         <div id="comments-pagination" class="flex-row" style="justify-content:center;"></div>
@@ -108,12 +113,8 @@
           <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>
-      <div id="members-list" class="members-list">
-        <!-- динамически -->
-      </div>
+      <div id="members-list" class="members-list"></div>
       <div id="members-pagination" class="flex-row" style="justify-content:center; margin-top:0.5rem;"></div>
-
-      <!-- Добавление участника (только для owner) -->
       <div id="add-member-section" style="margin-top:1.5rem; display:none;">
         <hr>
         <label class="label">Add Member</label>

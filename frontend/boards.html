@@ -11,7 +11,10 @@
 <body>
   <header class="top-bar">
     <h1 class="logo">ExpoNotes</h1>
-    <button id="logout-btn" class="btn btn-ghost">Log out</button>
+    <div class="flex-row">
+      <a id="profile-link" class="btn btn-ghost" href="profile.html">Profile</a>
+      <button id="logout-btn" class="btn btn-ghost">Log out</button>
+    </div>
   </header>
   <main class="content">
     <div class="page-header">
@@ -19,7 +22,7 @@
       <button id="create-board-btn" class="btn">Create Board</button>
     </div>
     <div id="boards-container" class="boards-grid">
-      <!-- динамически заполняется -->
+      <!-- динамически -->
     </div>
     <div id="pagination" class="pagination">
       <button id="prev-btn" class="btn btn-ghost" disabled>Previous</button>
@@ -49,6 +52,7 @@
 
   <script src="scripts/config.js"></script>
   <script src="scripts/api.js"></script>
+  <script src="scripts/utils.js"></script>
   <script src="scripts/boards.js"></script>
 </body>
 </html>

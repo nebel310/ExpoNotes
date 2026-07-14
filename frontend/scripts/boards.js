@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  // Проверка авторизации
   if (!api.getAccessToken()) {
     window.location.href = 'index.html';
     return;
@@ -12,13 +11,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('boards-container');
   const prevBtn = document.getElementById('prev-btn');
   const nextBtn = document.getElementById('next-btn');
+  const profileLink = document.getElementById('profile-link');
 
-  // Получить текущего пользователя
+  // Получить текущего пользователя и обновить ссылку на профиль
   try {
     const res = await api.get('/auth/me');
     if (res.ok) {
       const user = await res.json();
       currentUserId = user.id;
+      profileLink.textContent = user.username;
     }
   } catch (e) {
     console.warn('Could not fetch user', e);
@@ -73,7 +74,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       container.appendChild(card);
     });
 
-    // Обработчики удаления
     document.querySelectorAll('.delete-board-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -108,7 +108,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (nextCursor) loadBoards(nextCursor, 'after');
   });
 
-  // Создание доски
   const createModal = document.getElementById('create-modal');
   const createBoardBtn = document.getElementById('create-board-btn');
   const closeModalBtn = document.getElementById('close-modal-btn');
@@ -138,13 +137,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error(err.detail || 'Creation failed');
       }
       closeModal();
-      await loadBoards(); // перезагрузить первую страницу
+      await loadBoards();
     } catch (error) {
       alert(error.message);
     }
   });
 
-  // Выход
   document.getElementById('logout-btn').addEventListener('click', async () => {
     try {
       await api.post('/auth/logout');
@@ -153,19 +151,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.href = 'index.html';
   });
 
-  // Загрузить доски при старте
   await loadBoards();
 });
-
-// Хелперы
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
