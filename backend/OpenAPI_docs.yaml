@@ -322,9 +322,33 @@ components:
     SearchCardResponse:
       type: object
       properties:
-        items: { type: array, items: { $ref: "#/components/schemas/CardResponse" } }
-        next_cursor: { type: string, nullable: true }
-        previous_cursor: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchCardItem"
+        next_cursor:
+          type: string
+          nullable: true
+        previous_cursor:
+          type: string
+          nullable: true
+    SearchCardItem:
+      type: object
+      properties:
+        id: { type: integer, example: 101 }
+        column_id: { type: integer, example: 3 }
+        title: { type: string, example: "Задача 1" }
+        description: { type: string, nullable: true, example: "Описание задачи" }
+        order: { type: integer, example: 1 }
+        author_id: { type: integer, example: 10 }
+        assignee_id: { type: integer, nullable: true, example: 5 }
+        due_date: { type: string, format: date-time, nullable: true, example: "2025-02-01T10:00:00Z" }
+        priority: { type: string, nullable: true, example: "high" }
+        file_id: { type: integer, nullable: true, example: null }
+        version: { type: integer, example: 4 }
+        created_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+        updated_at: { type: string, format: date-time, example: "2025-01-01T12:00:00Z" }
+        board_id: { type: integer, example: 1 }
 security:
   - Bearer: []
 paths:

@@ -2,7 +2,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.auth import UserOrm
 from repositories.search import SearchRepository
-from schemas.search import SearchCardResponse
+from schemas.search import SearchCardResponse, SearchCardItem
+from schemas.cards import CardResponse
 from utils.security import get_current_user
 from utils.pagination import encode_cursor, decode_cursor
 
@@ -46,6 +47,7 @@ async def search_cards(
     """
     Поиск карточек по тексту (title, description) во всех доступных досках.
     Параметр q обязателен и не может быть пустым.
+    В ответе каждая карточка содержит board_id.
     """
     if not q.strip():
         raise HTTPException(status_code=400, detail="Параметр q обязателен и не может быть пустым")
@@ -60,7 +62,7 @@ async def search_cards(
         raise HTTPException(status_code=400, detail="Некорректный курсор")
 
     try:
-        cards, next_id, prev_id = await SearchRepository.search_cards(
+        cards_with_board, next_id, prev_id = await SearchRepository.search_cards(
             user_id=current_user.id,
             query_text=q,
             cursor=str(cursor_id) if cursor_id is not None else None,
@@ -73,8 +75,14 @@ async def search_cards(
         logger.exception(str(e))
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
+    items = []
+    for card, board_id in cards_with_board:
+        card_data = CardResponse.model_validate(card).model_dump()
+        card_data["board_id"] = board_id
+        items.append(SearchCardItem(**card_data))
+
     return SearchCardResponse(
-        items=cards,
+        items=items,
         next_cursor=encode_cursor(int(next_id)) if next_id else None,
         previous_cursor=encode_cursor(int(prev_id)) if prev_id else None
     )
