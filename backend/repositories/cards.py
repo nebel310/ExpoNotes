@@ -1,5 +1,6 @@
 from sqlalchemy import select, and_, update, func
 from database import new_session
+from models.auth import UserOrm
 from models.cards import CardOrm, Priority
 from models.columns import ColumnOrm
 from models.board_members import BoardMemberOrm, MemberRole
@@ -39,6 +40,11 @@ class CardRepository:
             role = await cls.get_member_role(column.board_id, author_id)
             if role not in (MemberRole.WRITER, MemberRole.OWNER):
                 raise ValueError("Недостаточно прав для создания карточки")
+
+            if assignee_id is not None:
+                user = await session.get(UserOrm, assignee_id)
+                if not user:
+                    raise ValueError("Назначенный пользователь не найден")
 
             if order is None:
                 max_order_query = select(func.max(CardOrm.order)).where(CardOrm.column_id == column_id)

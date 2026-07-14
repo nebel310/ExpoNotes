@@ -12,7 +12,6 @@ class SCardCreate(BaseModel):
     """Схема для создания карточки."""
     title: str
     description: str | None = None
-    column_id: int
     order: int | None = None
     assignee_id: int | None = None
     due_date: datetime | None = None
@@ -25,7 +24,6 @@ class SCardCreate(BaseModel):
                 {
                     "title": "Задача 1",
                     "description": "Описание задачи",
-                    "column_id": 3,
                     "order": 1,
                     "assignee_id": 5,
                     "due_date": "2025-02-01T10:00:00Z",
