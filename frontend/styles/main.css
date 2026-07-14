@@ -74,6 +74,18 @@ h1, h2, h3, h4 {
   color: white;
 }
 
+.btn-icon {
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.btn-icon:hover {
+  background: rgba(255,255,255,0.08);
+}
+
 /* Инпуты */
 .input-field {
   width: 100%;
@@ -108,10 +120,54 @@ h1, h2, h3, h4 {
   letter-spacing: 0.03em;
 }
 
-/* Общие вспомогательные */
 .error-message {
   color: #ff5c5c;
   font-size: 0.85rem;
   margin: 0.8rem 0;
   min-height: 1.2rem;
+}
+
+/* Иконки */
+.icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Модальные окна */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal {
+  background-color: var(--surface-2);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: var(--shadow-md);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+/* Flex-строка */
+.flex-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
 }

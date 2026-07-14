@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ExpoNotes · Boards</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles/main.css"/>
+  <link rel="stylesheet" href="styles/boards.css"/>
+</head>
+<body>
+  <header class="top-bar">
+    <h1 class="logo">ExpoNotes</h1>
+    <button id="logout-btn" class="btn btn-ghost">Log out</button>
+  </header>
+  <main class="content">
+    <div class="page-header">
+      <h2>My Boards</h2>
+      <button id="create-board-btn" class="btn">Create Board</button>
+    </div>
+    <div id="boards-container" class="boards-grid">
+      <!-- динамически заполняется -->
+    </div>
+    <div id="pagination" class="pagination">
+      <button id="prev-btn" class="btn btn-ghost" disabled>Previous</button>
+      <button id="next-btn" class="btn btn-ghost" disabled>Load more</button>
+    </div>
+  </main>
+
+  <!-- Модальное окно создания доски -->
+  <div id="create-modal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>New Board</h3>
+        <button class="btn btn-icon" id="close-modal-btn">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <label class="label">Title</label>
+      <input class="input-field mb-1" id="new-board-title" placeholder="Board name" required/>
+      <label class="label">Description (optional)</label>
+      <textarea class="input-field" id="new-board-desc" rows="2" placeholder="Short description..."></textarea>
+      <div class="flex-row" style="justify-content: flex-end; margin-top:1.5rem;">
+        <button class="btn btn-ghost" id="cancel-create-btn">Cancel</button>
+        <button class="btn" id="create-btn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts/config.js"></script>
+  <script src="scripts/api.js"></script>
+  <script src="scripts/boards.js"></script>
+</body>
+</html>
