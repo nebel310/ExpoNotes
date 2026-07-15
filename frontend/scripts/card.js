@@ -75,11 +75,37 @@
       attachmentInfo.style.display = 'flex';
       attachmentEmpty.style.display = 'none';
       attachmentName.textContent = `Вложение ${currentCard.file_id}`;
-      attachmentDownload.href = `${AppConfig.BASE_URL}/files/${currentCard.file_id}`;
-      attachmentDownload.download = `file_${currentCard.file_id}`;
+      // Убираем href, будем скачивать через JS
+      attachmentDownload.removeAttribute('href');
+      attachmentDownload.onclick = () => downloadAttachment(currentCard.file_id);
     } else {
       attachmentInfo.style.display = 'none';
       attachmentEmpty.style.display = 'block';
+    }
+  }
+
+  // Функция авторизованного скачивания файла
+  async function downloadAttachment(fileId) {
+    try {
+      const token = api.getAccessToken();
+      const response = await fetch(`${AppConfig.BASE_URL}/files/${fileId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Download failed');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `file_${fileId}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message);
     }
   }
 
@@ -144,10 +170,9 @@
         const err = await uploadRes.json();
         throw new Error(err.detail || 'Upload failed');
       }
-      const fileData = await uploadRes.json(); // предполагаем, что ответ содержит { id: ... }
+      const fileData = await uploadRes.json();
       const fileId = fileData.id;
 
-      // Обновляем карточку
       const patchRes = await api.patch(`/cards/${currentCard.id}`, {
         file_id: fileId,
         version: currentCard.version
@@ -162,11 +187,10 @@
     } catch (err) {
       alert(err.message);
     }
-    // очищаем поле
     attachmentInput.value = '';
   });
 
-  // Комментарии
+  // Комментарии (без изменений)
   async function loadComments(cursor = null, direction = 'after') {
     try {
       const params = new URLSearchParams({ direction, limit: 5 });
@@ -298,6 +322,4 @@
       alert(err.message);
     }
   }
-
-  window.refreshBoard = null; // будет установлено из board.js
 })();
