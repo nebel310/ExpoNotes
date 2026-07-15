@@ -75,7 +75,6 @@
       attachmentInfo.style.display = 'flex';
       attachmentEmpty.style.display = 'none';
       attachmentName.textContent = `Вложение ${currentCard.file_id}`;
-      // Убираем href, будем скачивать через JS
       attachmentDownload.removeAttribute('href');
       attachmentDownload.onclick = () => downloadAttachment(currentCard.file_id);
     } else {
@@ -84,7 +83,6 @@
     }
   }
 
-  // Функция авторизованного скачивания файла
   async function downloadAttachment(fileId) {
     try {
       const token = api.getAccessToken();
@@ -146,24 +144,17 @@
     if (e.target === overlay) overlay.style.display = 'none';
   });
 
-  // Загрузка файла
-  uploadBtn.addEventListener('click', () => {
-    attachmentInput.click();
-  });
+  uploadBtn.addEventListener('click', () => attachmentInput.click());
 
   attachmentInput.addEventListener('change', async () => {
     const file = attachmentInput.files[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append('file', file);
-
     try {
       const uploadRes = await fetch(`${AppConfig.BASE_URL}/files/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${api.getAccessToken()}`
-        },
+        headers: { 'Authorization': `Bearer ${api.getAccessToken()}` },
         body: formData
       });
       if (!uploadRes.ok) {
@@ -172,7 +163,6 @@
       }
       const fileData = await uploadRes.json();
       const fileId = fileData.id;
-
       const patchRes = await api.patch(`/cards/${currentCard.id}`, {
         file_id: fileId,
         version: currentCard.version
@@ -190,7 +180,7 @@
     attachmentInput.value = '';
   });
 
-  // Комментарии (без изменений)
+  // Комментарии
   async function loadComments(cursor = null, direction = 'after') {
     try {
       const params = new URLSearchParams({ direction, limit: 5 });
@@ -220,8 +210,15 @@
       const el = document.createElement('div');
       el.className = 'comment';
       const canModify = comment.author_id === window.currentUserId || currentBoardOwner === window.currentUserId;
+      const initials = comment.username ? comment.username.charAt(0).toUpperCase() : 'A';
       el.innerHTML = `
-        <div class="comment-author">${escapeHtml(comment.username)}</div>
+        <div class="comment-header">
+          <div class="comment-avatar">
+            <img class="avatar-img" style="display:none;" />
+            <span class="avatar-initials">${initials}</span>
+          </div>
+          <div class="comment-author">${escapeHtml(comment.username)}</div>
+        </div>
         <div class="comment-text">${escapeHtml(comment.text)}</div>
         <div class="comment-date">${formatDate(comment.created_at)}</div>
         ${canModify ? `
@@ -235,6 +232,11 @@
           </div>
         ` : ''}
       `;
+      // Загружаем аватарку
+      const img = el.querySelector('.avatar-img');
+      const initialsEl = el.querySelector('.avatar-initials');
+      setAvatar(comment.author_id, img, initialsEl);
+
       commentsContainer.appendChild(el);
     });
 
@@ -290,7 +292,6 @@
         <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     `;
-
     document.querySelector(`.save-comment-edit-btn[data-id="${commentId}"]`)?.addEventListener('click', () => saveCommentEdit(commentId));
     document.querySelector(`.cancel-comment-edit-btn[data-id="${commentId}"]`)?.addEventListener('click', () => {
       textDiv.textContent = oldText;

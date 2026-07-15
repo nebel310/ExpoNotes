@@ -17,15 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     currentBoardId = window.boardId;
     currentUserRole = window.userRole;
     currentUserId = window.currentUserId;
-    if (!currentBoardId) {
-      return false;
-    }
+    if (!currentBoardId) return false;
     membersBtn.style.display = 'inline-flex';
-    if (currentUserRole === 'owner') {
-      addSection.style.display = 'block';
-    } else {
-      addSection.style.display = 'none';
-    }
+    addSection.style.display = currentUserRole === 'owner' ? 'block' : 'none';
     return true;
   }
 
@@ -43,9 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     membersOverlay.style.display = 'flex';
   });
 
-  closeBtn.addEventListener('click', () => {
-    membersOverlay.style.display = 'none';
-  });
+  closeBtn.addEventListener('click', () => membersOverlay.style.display = 'none');
   membersOverlay.addEventListener('click', (e) => {
     if (e.target === membersOverlay) membersOverlay.style.display = 'none';
   });
@@ -57,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await api.get(`/boards/${currentBoardId}/members/?${params}`);
       if (!res.ok) throw new Error('Failed to load members');
       const data = await res.json();
-      // Загружаем имена пользователей
       const itemsWithNames = await Promise.all(data.items.map(async (m) => {
         const username = await getUsername(m.user_id);
         return { ...m, username };
@@ -81,13 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
     members.forEach(member => {
       const item = document.createElement('div');
       item.className = 'member-item';
-      const initials = member.username ? member.username.charAt(0).toUpperCase() : 'U';
+      const initialsText = member.username ? member.username.charAt(0).toUpperCase() : 'U';
       const roleDisabled = !isOwner || member.user_id === currentUserId;
       const canRemove = isOwner && member.user_id !== currentUserId;
 
       item.innerHTML = `
         <div class="member-info">
-          <div class="member-avatar">${initials}</div>
+          <div class="member-avatar">
+            <img class="avatar-img" style="display:none;" />
+            <span class="avatar-initials">${initialsText}</span>
+          </div>
           <span class="member-name">${escapeHtml(member.username)}</span>
         </div>
         <div class="flex-row" style="gap:0.3rem;">
@@ -103,6 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
           ` : ''}
         </div>
       `;
+
+      // Загружаем аватарку
+      const img = item.querySelector('.avatar-img');
+      const initialsEl = item.querySelector('.avatar-initials');
+      setAvatar(member.user_id, img, initialsEl);
 
       const select = item.querySelector('.member-role-select');
       if (select && !roleDisabled) {
@@ -172,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Enter user email');
       return;
     }
-
     try {
       const userRes = await api.get(`/auth/users/by-email?email=${encodeURIComponent(email)}`);
       if (!userRes.ok) {
@@ -180,20 +178,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const err = await userRes.json();
         throw new Error(err.detail || 'Failed to find user');
       }
-
       const user = await userRes.json();
       const role = newRoleSelect.value;
-
       const addRes = await api.post(`/boards/${currentBoardId}/members/`, {
         user_id: user.id,
         role: role
       });
-
       if (!addRes.ok) {
         const err = await addRes.json();
         throw new Error(err.detail || 'Failed to add member');
       }
-
       newEmailInput.value = '';
       await loadMembers();
     } catch (err) {

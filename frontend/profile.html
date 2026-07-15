@@ -25,8 +25,13 @@
   <main class="content">
     <div class="profile-layout">
       <div class="avatar-section">
-        <div class="large-avatar" id="profile-avatar">--</div>
+        <div class="large-avatar" id="profile-avatar-container">
+          <img id="profile-avatar-img" style="display:none;" />
+          <span id="profile-avatar-initials" class="avatar-initials-large">--</span>
+        </div>
         <h2 id="profile-username">username</h2>
+        <input type="file" id="avatar-input" accept="image/png, image/jpeg" style="display:none;" />
+        <button class="btn btn-ghost" id="change-avatar-btn">Change Avatar</button>
       </div>
       <form id="profile-form" class="profile-form">
         <div class="field-group">
