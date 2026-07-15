@@ -203,6 +203,35 @@ async def get_current_user_info(current_user: UserOrm = Depends(get_current_user
         )
 
 
+@router.get(
+    "/users/{user_id}",
+    response_model=SUser,
+    responses={
+        401: {"model": ErrorResponse, "description": "Не авторизован"},
+        404: {"model": ErrorResponse, "description": "Пользователь не найден"},
+        500: {"model": ErrorResponse, "description": "Внутренняя ошибка сервера"}
+    }
+)
+async def get_user_by_id(
+    user_id: int,
+    current_user: UserOrm = Depends(get_current_user)
+):
+    """
+    Возвращает пользователя по его ID.
+    Требует авторизации.
+    """
+    try:
+        user = await UserRepository.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("Пользователь не найден")
+        return SUser.model_validate(user)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception(str(e))
+        raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
+
+
 @router.patch(
     "/me",
     response_model=SUser,
@@ -308,35 +337,6 @@ async def get_user_by_email(
 
     try:
         user = await UserRepository.get_user_by_email(email)
-        if not user:
-            raise ValueError("Пользователь не найден")
-        return SUser.model_validate(user)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.exception(str(e))
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
-
-
-router.get(
-    "/users/{user_id}",
-    response_model=SUser,
-    responses={
-        401: {"model": ErrorResponse, "description": "Не авторизован"},
-        404: {"model": ErrorResponse, "description": "Пользователь не найден"},
-        500: {"model": ErrorResponse, "description": "Внутренняя ошибка сервера"}
-    }
-)
-async def get_user_by_id(
-    user_id: int,
-    current_user: UserOrm = Depends(get_current_user)
-):
-    """
-    Возвращает пользователя по его ID.
-    Требует авторизации.
-    """
-    try:
-        user = await UserRepository.get_user_by_id(user_id)
         if not user:
             raise ValueError("Пользователь не найден")
         return SUser.model_validate(user)
