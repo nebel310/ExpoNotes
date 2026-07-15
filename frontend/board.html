@@ -19,7 +19,6 @@
       <h1 id="board-title" class="board-title">Loading...</h1>
     </div>
     <div class="top-bar-right">
-      <!-- Поиск -->
       <div class="search-container">
         <input type="text" class="input-field search-input" id="search-input" placeholder="Search cards..."/>
         <button class="btn btn-icon search-btn" id="search-btn">
@@ -67,6 +66,7 @@
         </button>
       </div>
       <div class="card-detail-body">
+        <!-- Поля карточки -->
         <div id="card-fields">
           <label class="label">Title</label>
           <input class="input-field" id="edit-card-title" disabled/>
@@ -86,13 +86,29 @@
               <input type="datetime-local" class="input-field" id="edit-card-due" disabled/>
             </div>
           </div>
+
+          <!-- Блок вложений -->
+          <div class="attachment-section mt-1">
+            <label class="label">Attachment</label>
+            <div id="attachment-info" class="attachment-info" style="display:none;">
+              <span id="attachment-name" class="attachment-name"></span>
+              <a id="attachment-download" class="attachment-download" href="#" target="_blank">Download</a>
+            </div>
+            <div id="attachment-empty" class="attachment-empty" style="color: var(--text-secondary); font-size:0.9rem;">No attachment</div>
+            <input type="file" id="attachment-input" style="display:none;" />
+            <button class="btn mt-1" id="upload-attachment-btn">Upload Attachment</button>
+          </div>
+
           <div class="flex-row" style="justify-content: flex-end; margin-top:1rem;">
             <button class="btn btn-ghost" id="card-cancel-edit-btn" style="display:none;">Cancel</button>
             <button class="btn" id="card-save-btn" style="display:none;">Save</button>
             <button class="btn" id="card-edit-btn">Edit</button>
           </div>
         </div>
+
         <hr>
+
+        <!-- Комментарии -->
         <h4>Comments</h4>
         <div id="comments-container"></div>
         <div id="comments-pagination" class="flex-row" style="justify-content:center;"></div>

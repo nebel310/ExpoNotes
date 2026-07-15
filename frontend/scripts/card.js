@@ -13,6 +13,14 @@
   const addCommentBtn = document.getElementById('add-comment-btn');
   const commentsPagination = document.getElementById('comments-pagination');
 
+  // Вложения
+  const attachmentInfo = document.getElementById('attachment-info');
+  const attachmentName = document.getElementById('attachment-name');
+  const attachmentDownload = document.getElementById('attachment-download');
+  const attachmentEmpty = document.getElementById('attachment-empty');
+  const attachmentInput = document.getElementById('attachment-input');
+  const uploadBtn = document.getElementById('upload-attachment-btn');
+
   let currentCard = null;
   let currentBoardOwner = null;
   let isWriter = false;
@@ -27,6 +35,7 @@
       if (!res.ok) throw new Error('Card not found');
       currentCard = await res.json();
       populateFields();
+      renderAttachment();
       await loadComments();
       overlay.style.display = 'flex';
     } catch (err) {
@@ -54,9 +63,24 @@
     descInput.disabled = disabled;
     prioritySelect.disabled = disabled;
     dueInput.disabled = disabled;
+    uploadBtn.style.display = on ? 'inline-flex' : 'none';
     editBtn.style.display = !on ? 'inline-flex' : 'none';
     saveBtn.style.display = on ? 'inline-flex' : 'none';
     cancelEditBtn.style.display = on ? 'inline-flex' : 'none';
+  }
+
+  function renderAttachment() {
+    if (!currentCard) return;
+    if (currentCard.file_id) {
+      attachmentInfo.style.display = 'flex';
+      attachmentEmpty.style.display = 'none';
+      attachmentName.textContent = `Вложение ${currentCard.file_id}`;
+      attachmentDownload.href = `${AppConfig.BASE_URL}/files/${currentCard.file_id}`;
+      attachmentDownload.download = `file_${currentCard.file_id}`;
+    } else {
+      attachmentInfo.style.display = 'none';
+      attachmentEmpty.style.display = 'block';
+    }
   }
 
   editBtn.addEventListener('click', () => setEditMode(true));
@@ -82,6 +106,7 @@
       }
       currentCard = await res.json();
       populateFields();
+      renderAttachment();
       if (window.refreshBoard) window.refreshBoard();
     } catch (err) {
       alert(err.message);
@@ -95,6 +120,53 @@
     if (e.target === overlay) overlay.style.display = 'none';
   });
 
+  // Загрузка файла
+  uploadBtn.addEventListener('click', () => {
+    attachmentInput.click();
+  });
+
+  attachmentInput.addEventListener('change', async () => {
+    const file = attachmentInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const uploadRes = await fetch(`${AppConfig.BASE_URL}/files/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${api.getAccessToken()}`
+        },
+        body: formData
+      });
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json();
+        throw new Error(err.detail || 'Upload failed');
+      }
+      const fileData = await uploadRes.json(); // предполагаем, что ответ содержит { id: ... }
+      const fileId = fileData.id;
+
+      // Обновляем карточку
+      const patchRes = await api.patch(`/cards/${currentCard.id}`, {
+        file_id: fileId,
+        version: currentCard.version
+      });
+      if (!patchRes.ok) {
+        const err = await patchRes.json();
+        throw new Error(err.detail || 'Failed to attach file');
+      }
+      currentCard = await patchRes.json();
+      renderAttachment();
+      if (window.refreshBoard) window.refreshBoard();
+    } catch (err) {
+      alert(err.message);
+    }
+    // очищаем поле
+    attachmentInput.value = '';
+  });
+
+  // Комментарии
   async function loadComments(cursor = null, direction = 'after') {
     try {
       const params = new URLSearchParams({ direction, limit: 5 });
@@ -115,7 +187,6 @@
       return;
     }
 
-    // Загружаем имена авторов
     const itemsWithNames = await Promise.all(commentsData.items.map(async (c) => {
       const username = await getUsername(c.author_id);
       return { ...c, username };
@@ -140,11 +211,9 @@
           </div>
         ` : ''}
       `;
-      // Обработчики уже были, они добавляются после вставки
       commentsContainer.appendChild(el);
     });
 
-    // Обработчики кнопок (из старого кода)
     document.querySelectorAll('.edit-comment-btn').forEach(btn => {
       btn.addEventListener('click', () => startEditComment(btn.dataset.id, btn.dataset.text));
     });
@@ -152,7 +221,6 @@
       btn.addEventListener('click', () => deleteComment(btn.dataset.id));
     });
 
-    // Пагинация
     commentsPagination.innerHTML = '';
     if (commentsData.prevCursor) {
       const prevBtn = document.createElement('button');
@@ -170,19 +238,18 @@
     }
   }
 
-  function addComment() {
+  addCommentBtn.addEventListener('click', async () => {
     const text = newCommentText.value.trim();
     if (!text) return;
-    api.post(`/cards/${currentCard.id}/comments/`, { text })
-      .then(res => res.json())
-      .then(() => {
-        newCommentText.value = '';
-        loadComments();
-      })
-      .catch(err => alert(err.message));
-  }
-
-  addCommentBtn.addEventListener('click', addComment);
+    try {
+      const res = await api.post(`/cards/${currentCard.id}/comments/`, { text });
+      if (!res.ok) throw new Error((await res.json()).detail);
+      newCommentText.value = '';
+      await loadComments();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
 
   function startEditComment(commentId, currentText) {
     const commentDiv = document.querySelector(`.edit-comment-btn[data-id="${commentId}"]`)?.closest('.comment');
@@ -231,4 +298,6 @@
       alert(err.message);
     }
   }
+
+  window.refreshBoard = null; // будет установлено из board.js
 })();

@@ -9,6 +9,42 @@
   margin-bottom: 0.8rem;
 }
 
+/* Вложения */
+.attachment-section {
+  margin-bottom: 0.8rem;
+}
+
+.attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface-1);
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+}
+
+.attachment-name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.attachment-download {
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.attachment-download:hover {
+  text-decoration: underline;
+}
+
+.attachment-empty {
+  margin-bottom: 0.5rem;
+}
+
 #comments-container {
   max-height: 250px;
   overflow-y: auto;
