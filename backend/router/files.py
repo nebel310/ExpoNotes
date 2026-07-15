@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 from fastapi import(
     APIRouter, Depends, HTTPException,
     UploadFile, status, File,
@@ -23,6 +24,21 @@ router = APIRouter(
 
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_content_disposition(filename: str) -> str:
+    """
+    Формирует значение заголовка Content-Disposition с безопасным именем файла.
+    Поддерживает не‑ASCII символы через RFC 5987.
+    """
+    try:
+        filename.encode("ascii")
+    except UnicodeEncodeError:
+        # Если есть не‑ASCII символы, формируем filename*=UTF-8''encoded
+        encoded = urllib.parse.quote(filename, safe='')
+        return f"attachment; filename*=UTF-8''{encoded}"
+    else:
+        return f'attachment; filename="{filename}"'
 
 
 
@@ -70,7 +86,7 @@ async def upload_file(
     "/{file_id}",
     status_code=status.HTTP_200_OK,
     responses={
-        500: {"model": ValidationErrorResponse, "description": "Внутренняя ошибка сервера"},
+        500: {"model": ErrorResponse, "description": "Внутренняя ошибка сервера"},
         404: {"model": ErrorResponse, "description": "Файл не найден"},
         502: {"model": ErrorResponse, "description": "Ошибка хранилища"},
     }
@@ -79,14 +95,12 @@ async def old_dowload_file(
     file_id: int,
     current_user: UserOrm = Depends(get_current_user)
 ):
-    """Эндпоинт для тупого скачивания файла по его file_id"""
+    """Эндпоинт для скачивания файла целиком по file_id"""
     try:
         file_bytes, file_data = await FileRepository.download_file_by_id(file_id)
-        
-        safe_filename = file_data.original_name.replace('"', '')
-        
+
         headers = {
-            "Content-Disposition": f'attachment; filename="{safe_filename}"'
+            "Content-Disposition": _safe_content_disposition(file_data.original_name)
         }
         return Response(
             content=file_bytes,
@@ -99,7 +113,7 @@ async def old_dowload_file(
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         logger.exception(str(e))
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера")
 
 
 @router.get(
@@ -126,7 +140,7 @@ async def download_file(
 
     file_size = file_info.size
     content_type = file_info.content_type or "application/octet-stream"
-    safe_filename = file_info.original_name.replace('"', '')
+    content_disposition = _safe_content_disposition(file_info.original_name)
 
     range_header = request.headers.get("Range")
     if range_header:
@@ -153,7 +167,7 @@ async def download_file(
             "Content-Range": f"bytes {start}-{end}/{file_size}",
             "Accept-Ranges": "bytes",
             "Content-Length": str(content_length),
-            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "Content-Disposition": content_disposition,
         }
         return StreamingResponse(
             FileRepository.stream_file_range(file_id, start, end),
@@ -165,7 +179,7 @@ async def download_file(
         headers = {
             "Accept-Ranges": "bytes",
             "Content-Length": str(file_size),
-            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "Content-Disposition": content_disposition,
         }
         return StreamingResponse(
             FileRepository.stream_file_range(file_id),
@@ -231,10 +245,3 @@ async def delete_file(
     except Exception as e:
         logger.exception(str(e))
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера")
-
-
-""" 
-TODO:
-
-Реализовать эндпоинт по получению всех пользователей с cursor пагинацией
-"""
