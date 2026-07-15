@@ -305,7 +305,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         <span class="search-result-board">Board #${card.board_id}</span>
       `;
       div.addEventListener('click', () => {
-        window.location.href = `board.html?id=${card.board_id}`;
+        searchResults.style.display = 'none';
+        searchInput.value = '';
+        if (card.board_id == boardId) {
+          // Карточка в текущей доске – открываем модалку
+          if (window.currentBoardOwner && window.openCardDetail) {
+            window.openCardDetail(card.id, window.currentBoardOwner, userRole);
+          }
+        } else {
+          // Карточка в другой доске – предупреждаем и перенаправляем
+          if (confirm('This card is in another board. Open it?')) {
+            window.location.href = `board.html?id=${card.board_id}`;
+          }
+        }
       });
       searchResults.appendChild(div);
     });
