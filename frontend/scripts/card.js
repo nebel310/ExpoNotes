@@ -1,4 +1,3 @@
-// Этот скрипт работает совместно с board.js и управляет модальным окном карточки
 (() => {
   const overlay = document.getElementById('card-detail-overlay');
   const closeBtn = document.getElementById('card-detail-close-btn');
@@ -20,7 +19,6 @@
   let editMode = false;
   let commentsData = { items: [], nextCursor: null, prevCursor: null };
 
-  // Функция открытия модалки (вызывается из board.js)
   window.openCardDetail = async function(cardId, boardOwnerId, userRole) {
     currentBoardOwner = boardOwnerId;
     isWriter = userRole === 'writer' || userRole === 'owner';
@@ -63,7 +61,7 @@
 
   editBtn.addEventListener('click', () => setEditMode(true));
   cancelEditBtn.addEventListener('click', () => {
-    populateFields(); // сброс
+    populateFields();
     setEditMode(false);
   });
 
@@ -84,7 +82,6 @@
       }
       currentCard = await res.json();
       populateFields();
-      // Обновить список колонок после изменения (чтобы title поменялся на доске)
       if (window.refreshBoard) window.refreshBoard();
     } catch (err) {
       alert(err.message);
@@ -98,7 +95,6 @@
     if (e.target === overlay) overlay.style.display = 'none';
   });
 
-  // Комментарии
   async function loadComments(cursor = null, direction = 'after') {
     try {
       const params = new URLSearchParams({ direction, limit: 5 });
@@ -112,41 +108,49 @@
     }
   }
 
-  function renderComments() {
+  async function renderComments() {
     commentsContainer.innerHTML = '';
     if (commentsData.items.length === 0) {
       commentsContainer.innerHTML = '<p style="color:var(--text-secondary);">No comments yet.</p>';
-    } else {
-      commentsData.items.forEach(comment => {
-        const el = document.createElement('div');
-        el.className = 'comment';
-        const canModify = comment.author_id === getCurrentUserId() || currentBoardOwner === getCurrentUserId();
-        el.innerHTML = `
-          <div class="comment-author">User #${comment.author_id}</div>
-          <div class="comment-text">${escapeHtml(comment.text)}</div>
-          <div class="comment-date">${formatDate(comment.created_at)}</div>
-          ${canModify ? `
-            <div class="comment-actions">
-              <button class="btn btn-icon edit-comment-btn" data-id="${comment.id}" data-text="${escapeHtml(comment.text)}">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              <button class="btn btn-icon delete-comment-btn" data-id="${comment.id}">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/></svg>
-              </button>
-            </div>
-          ` : ''}
-        `;
-        commentsContainer.appendChild(el);
-      });
-
-      // Обработчики кнопок внутри комментариев
-      document.querySelectorAll('.edit-comment-btn').forEach(btn => {
-        btn.addEventListener('click', () => startEditComment(btn.dataset.id, btn.dataset.text));
-      });
-      document.querySelectorAll('.delete-comment-btn').forEach(btn => {
-        btn.addEventListener('click', () => deleteComment(btn.dataset.id));
-      });
+      return;
     }
+
+    // Загружаем имена авторов
+    const itemsWithNames = await Promise.all(commentsData.items.map(async (c) => {
+      const username = await getUsername(c.author_id);
+      return { ...c, username };
+    }));
+
+    itemsWithNames.forEach(comment => {
+      const el = document.createElement('div');
+      el.className = 'comment';
+      const canModify = comment.author_id === window.currentUserId || currentBoardOwner === window.currentUserId;
+      el.innerHTML = `
+        <div class="comment-author">${escapeHtml(comment.username)}</div>
+        <div class="comment-text">${escapeHtml(comment.text)}</div>
+        <div class="comment-date">${formatDate(comment.created_at)}</div>
+        ${canModify ? `
+          <div class="comment-actions">
+            <button class="btn btn-icon edit-comment-btn" data-id="${comment.id}" data-text="${escapeHtml(comment.text)}">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn btn-icon delete-comment-btn" data-id="${comment.id}">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/></svg>
+            </button>
+          </div>
+        ` : ''}
+      `;
+      // Обработчики уже были, они добавляются после вставки
+      commentsContainer.appendChild(el);
+    });
+
+    // Обработчики кнопок (из старого кода)
+    document.querySelectorAll('.edit-comment-btn').forEach(btn => {
+      btn.addEventListener('click', () => startEditComment(btn.dataset.id, btn.dataset.text));
+    });
+    document.querySelectorAll('.delete-comment-btn').forEach(btn => {
+      btn.addEventListener('click', () => deleteComment(btn.dataset.id));
+    });
 
     // Пагинация
     commentsPagination.innerHTML = '';
@@ -166,28 +170,20 @@
     }
   }
 
-  function getCurrentUserId() {
-    // Читаем из глобальной переменной, установленной в board.js или из токена
-    // Простой способ: в board.js мы записывали currentUserId в window.currentUserId
-    return window.currentUserId;
-  }
-
-  async function addComment() {
+  function addComment() {
     const text = newCommentText.value.trim();
     if (!text) return;
-    try {
-      const res = await api.post(`/cards/${currentCard.id}/comments/`, { text });
-      if (!res.ok) throw new Error((await res.json()).detail);
-      newCommentText.value = '';
-      await loadComments();
-    } catch (err) {
-      alert(err.message);
-    }
+    api.post(`/cards/${currentCard.id}/comments/`, { text })
+      .then(res => res.json())
+      .then(() => {
+        newCommentText.value = '';
+        loadComments();
+      })
+      .catch(err => alert(err.message));
   }
 
   addCommentBtn.addEventListener('click', addComment);
 
-  // Редактирование комментария (inline)
   function startEditComment(commentId, currentText) {
     const commentDiv = document.querySelector(`.edit-comment-btn[data-id="${commentId}"]`)?.closest('.comment');
     if (!commentDiv) return;
@@ -207,7 +203,7 @@
     document.querySelector(`.save-comment-edit-btn[data-id="${commentId}"]`)?.addEventListener('click', () => saveCommentEdit(commentId));
     document.querySelector(`.cancel-comment-edit-btn[data-id="${commentId}"]`)?.addEventListener('click', () => {
       textDiv.textContent = oldText;
-      renderComments(); // перерисовать для восстановления кнопок
+      renderComments();
     });
   }
 
@@ -235,7 +231,4 @@
       alert(err.message);
     }
   }
-
-  // Экспортируем refreshBoard, чтобы board.js мог передать функцию обновления
-  window.refreshBoard = null;
 })();

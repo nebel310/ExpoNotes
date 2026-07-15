@@ -13,13 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentUserRole = null;
   let currentUserId = null;
 
-  // Ждём, пока board.js проставит глобальные переменные
   function initFromBoard() {
     currentBoardId = window.boardId;
     currentUserRole = window.userRole;
     currentUserId = window.currentUserId;
     if (!currentBoardId) {
-      console.warn('members: boardId not set yet');
       return false;
     }
     membersBtn.style.display = 'inline-flex';
@@ -59,7 +57,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await api.get(`/boards/${currentBoardId}/members/?${params}`);
       if (!res.ok) throw new Error('Failed to load members');
       const data = await res.json();
-      renderMembers(data.items);
+      // Загружаем имена пользователей
+      const itemsWithNames = await Promise.all(data.items.map(async (m) => {
+        const username = await getUsername(m.user_id);
+        return { ...m, username };
+      }));
+      renderMembers(itemsWithNames);
       renderPagination(data);
     } catch (err) {
       membersList.innerHTML = `<p class="error-message">${err.message}</p>`;
@@ -78,14 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
     members.forEach(member => {
       const item = document.createElement('div');
       item.className = 'member-item';
-      const initials = getInitials(member.user_id);
+      const initials = member.username ? member.username.charAt(0).toUpperCase() : 'U';
       const roleDisabled = !isOwner || member.user_id === currentUserId;
       const canRemove = isOwner && member.user_id !== currentUserId;
 
       item.innerHTML = `
         <div class="member-info">
           <div class="member-avatar">${initials}</div>
-          <span class="member-name">User #${member.user_id}</span>
+          <span class="member-name">${escapeHtml(member.username)}</span>
         </div>
         <div class="flex-row" style="gap:0.3rem;">
           <select class="member-role-select" data-member-id="${member.id}" data-user-id="${member.user_id}" ${roleDisabled ? 'disabled' : ''}>
@@ -163,11 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function getInitials(userId) {
-    return 'U' + userId;
-  }
-
-  // Добавление участника через поиск по email
   addMemberBtn.addEventListener('click', async () => {
     const email = newEmailInput.value.trim();
     if (!email) {
@@ -176,15 +174,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      // Ищем пользователя по email
       const userRes = await api.get(`/auth/users/by-email?email=${encodeURIComponent(email)}`);
       if (!userRes.ok) {
-        if (userRes.status === 404) {
-          throw new Error('User not found');
-        } else {
-          const err = await userRes.json();
-          throw new Error(err.detail || 'Failed to find user');
-        }
+        if (userRes.status === 404) throw new Error('User not found');
+        const err = await userRes.json();
+        throw new Error(err.detail || 'Failed to find user');
       }
 
       const user = await userRes.json();

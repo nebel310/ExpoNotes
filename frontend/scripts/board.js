@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
         <div class="column-cards" data-column-id="${column.id}">
           ${column.cards.map(card => `
-            <div class="card" draggable="${isWriter}" data-card-id="${card.id}">
+            <div class="card ${card.priority ? 'priority-' + card.priority : ''}" draggable="${isWriter}" data-card-id="${card.id}">
               <div class="card-title">${escapeHtml(card.title)}</div>
               ${isWriter ? `<button class="btn btn-icon card-delete" data-delete-card="${card.id}">
                 <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
