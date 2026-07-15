@@ -79,6 +79,7 @@ def custom_openapi():
         ("/auth/logout", "post"): [{"Bearer": []}],
         ("/auth/users", "get"): [{"Bearer": []}],
         ("/auth/users/by-email", "get"): [{"Bearer": []}],
+        ("/auth/users/{user_id}", "get"): [{"Bearer": []}],
         # Files
         ("/files/", "post"): [{"Bearer": []}],
         ("/files/{file_id}", "get"): [{"Bearer": []}],
