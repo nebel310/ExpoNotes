@@ -13,31 +13,23 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentUserRole = null;
   let currentUserId = null;
 
-  function initFromBoard() {
-    currentBoardId = window.boardId;
-    currentUserRole = window.userRole;
-    currentUserId = window.currentUserId;
-    if (!currentBoardId) return false;
-    membersBtn.style.display = 'inline-flex';
-    addSection.style.display = currentUserRole === 'owner' ? 'block' : 'none';
-    return true;
-  }
-
-  setTimeout(() => {
-    if (!initFromBoard()) {
-      const interval = setInterval(() => {
-        if (initFromBoard()) clearInterval(interval);
-      }, 100);
-    }
-  }, 50);
-
   membersBtn.addEventListener('click', () => {
-    if (!currentBoardId) return;
+    // Всегда берём актуальные данные из глобального скоупа board.js
+    if (!window.boardId) return;
+    currentBoardId = window.boardId;
+    currentUserRole = window.userRole || 'reader';
+    currentUserId = window.currentUserId;
+    
+    // Показываем/скрываем секцию добавления в зависимости от роли
+    addSection.style.display = currentUserRole === 'owner' ? 'block' : 'none';
+    
     loadMembers();
     membersOverlay.style.display = 'flex';
   });
 
-  closeBtn.addEventListener('click', () => membersOverlay.style.display = 'none');
+  closeBtn.addEventListener('click', () => {
+    membersOverlay.style.display = 'none';
+  });
   membersOverlay.addEventListener('click', (e) => {
     if (e.target === membersOverlay) membersOverlay.style.display = 'none';
   });
@@ -55,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }));
       renderMembers(itemsWithNames);
       renderPagination(data);
+      // На случай, если роль изменилась во время загрузки
+      addSection.style.display = currentUserRole === 'owner' ? 'block' : 'none';
     } catch (err) {
       membersList.innerHTML = `<p class="error-message">${err.message}</p>`;
     }
@@ -113,13 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
               const err = await res.json();
               throw new Error(err.detail || 'Failed to update role');
             }
-            await loadMembers();
+            // Обновить глобальную роль, если меняли себе
             if (member.user_id === currentUserId) {
               currentUserRole = newRole;
               window.userRole = newRole;
               document.getElementById('role-badge').textContent = newRole;
               window.refreshBoard();
             }
+            await loadMembers(); // перезагрузить список
           } catch (err) {
             alert(err.message);
           }
