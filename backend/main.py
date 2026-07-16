@@ -19,6 +19,7 @@ from router.audit_log import router as audit_log_router
 from router.search import router as search_router
 from websocket.router import router as ws_router
 from minio.client import s3_client
+from seed import seed
 
 
 
@@ -37,6 +38,9 @@ async def lifespan(app: FastAPI):
         print(f'Бакет {s3_client.bucket_name} создан')
     except Exception as e:
         print(f'Ошибка при запуске MINIO {str(e)}')
+    
+    await seed()
+    print('Тестовые данные загружены')
     
     yield
     
