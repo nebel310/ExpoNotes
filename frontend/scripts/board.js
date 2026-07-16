@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentUserId = null;
   let userRole = 'reader';
   let columns = [];
+  let isLoading = false;               // флаг, чтобы избежать одновременных загрузок
   const boardContainer = document.getElementById('board-container');
   const boardTitleEl = document.getElementById('board-title');
   const roleBadge = document.getElementById('role-badge');
@@ -27,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // WebSocket
   let ws = null;
 
-  // Сохраним глобально
+  // Глобальные ссылки
   window.boardId = boardId;
   window.currentBoardOwner = null;
   window.refreshBoard = null;
@@ -43,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       window.userRole = userRole;
       await loadBoardData();
-      // Подключаем WebSocket после загрузки доски
       connectWebSocket();
     } catch (e) {
       alert('Failed to initialize board');
@@ -55,16 +55,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   function connectWebSocket() {
     const token = api.getAccessToken();
     if (!token) return;
-
-    // Закрываем предыдущее соединение, если было
-    if (ws) {
-      ws.close();
-    }
+    if (ws) ws.close();
 
     ws = new WebSocket(`${AppConfig.BASE_URL.replace('http', 'ws')}/ws?token=${encodeURIComponent(token)}`);
 
     ws.onopen = () => {
-      // Подписываемся на доску
       ws.send(JSON.stringify({ type: 'subscribe', board_id: parseInt(boardId) }));
     };
 
@@ -72,40 +67,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'card_moved') {
-          // Обновляем доску полностью
-          loadBoardData();
-        } else if (msg.type === 'subscribed') {
-          console.log('WebSocket подписан на доску', msg.board_id);
-        } else if (msg.type === 'error') {
-          console.warn('WebSocket error:', msg.detail);
+          // Используем флаг, чтобы не запустить несколько загрузок одновременно
+          if (!isLoading) loadBoardData();
         }
       } catch (e) {}
     };
 
     ws.onclose = () => {
-      // Попытка переподключения через 5 секунд, если страница не закрыта
       setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          connectWebSocket();
-        }
+        if (document.visibilityState === 'visible') connectWebSocket();
       }, 5000);
     };
 
-    ws.onerror = (err) => {
-      console.error('WebSocket error:', err);
-    };
+    ws.onerror = () => {};
   }
 
-  // При уходе со страницы закрываем соединение
   window.addEventListener('beforeunload', () => {
-    if (ws) {
-      ws.close();
-    }
+    if (ws) ws.close();
   });
 
   // ================================
 
   async function loadBoardData() {
+    if (isLoading) return;          // защита от параллельных вызовов
+    isLoading = true;
     try {
       const boardRes = await api.get(`/boards/${boardId}`);
       if (!boardRes.ok) throw new Error('Board not found');
@@ -115,12 +100,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       await loadUserRole();
       columns = await fetchAllColumns();
-      for (const col of columns) {
-        col.cards = await fetchAllCards(col.id);
-      }
+
+      // Загружаем карточки для каждой колонки, оборачивая в try/catch
+      await Promise.all(columns.map(async (col) => {
+        try {
+          col.cards = await fetchAllCards(col.id);
+        } catch (err) {
+          col.cards = [];
+          console.error(`Failed to load cards for column ${col.id}`, err);
+        }
+      }));
+
       renderBoard();
     } catch (err) {
       alert(err.message);
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -182,6 +177,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const columnEl = document.createElement('div');
       columnEl.className = 'column';
       columnEl.dataset.columnId = column.id;
+
+      // Гарантируем, что cards – массив
+      const cards = Array.isArray(column.cards) ? column.cards : [];
+
       columnEl.innerHTML = `
         <div class="column-header">
           <span class="column-title">${escapeHtml(column.title)}</span>
@@ -190,7 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           </button>` : ''}
         </div>
         <div class="column-cards" data-column-id="${column.id}">
-          ${column.cards.map(card => `
+          ${cards.map(card => `
             <div class="card ${card.priority ? 'priority-' + card.priority : ''}" draggable="${isWriter}" data-card-id="${card.id}">
               <div class="card-title">${escapeHtml(card.title)}</div>
               ${isWriter ? `<button class="btn btn-icon card-delete" data-delete-card="${card.id}">
@@ -215,6 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       boardContainer.appendChild(addColBtn);
     }
 
+    // Обработчики удаления / добавления / клика
     document.querySelectorAll('[data-delete-column]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const err = await res.json();
         throw new Error(err.detail || 'Move failed');
       }
-      // WebSocket уже отправит уведомление всем, включая нас, но мы обновим доску сразу
+      // После успешного перемещения перезагружаем доску (WebSocket тоже вызовет обновление)
       await loadBoardData();
     } catch (err) {
       alert(err.message);
@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Модалка
+  // Модалка создания
   const modalOverlay = document.getElementById('modal-overlay');
   const modalTitle = document.getElementById('modal-title');
   const modalInput = document.getElementById('modal-input');
