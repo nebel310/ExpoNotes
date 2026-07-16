@@ -24,7 +24,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const searchBtn = document.getElementById('search-btn');
   const searchResults = document.getElementById('search-results');
 
-  // Сохраним глобально для card.js и members.js
+  // WebSocket
+  let ws = null;
+
+  // Сохраним глобально
   window.boardId = boardId;
   window.currentBoardOwner = null;
   window.refreshBoard = null;
@@ -40,11 +43,67 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       window.userRole = userRole;
       await loadBoardData();
+      // Подключаем WebSocket после загрузки доски
+      connectWebSocket();
     } catch (e) {
       alert('Failed to initialize board');
       window.location.href = 'boards.html';
     }
   }
+
+  // ========== WebSocket ==========
+  function connectWebSocket() {
+    const token = api.getAccessToken();
+    if (!token) return;
+
+    // Закрываем предыдущее соединение, если было
+    if (ws) {
+      ws.close();
+    }
+
+    ws = new WebSocket(`${AppConfig.BASE_URL.replace('http', 'ws')}/ws?token=${encodeURIComponent(token)}`);
+
+    ws.onopen = () => {
+      // Подписываемся на доску
+      ws.send(JSON.stringify({ type: 'subscribe', board_id: parseInt(boardId) }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'card_moved') {
+          // Обновляем доску полностью
+          loadBoardData();
+        } else if (msg.type === 'subscribed') {
+          console.log('WebSocket подписан на доску', msg.board_id);
+        } else if (msg.type === 'error') {
+          console.warn('WebSocket error:', msg.detail);
+        }
+      } catch (e) {}
+    };
+
+    ws.onclose = () => {
+      // Попытка переподключения через 5 секунд, если страница не закрыта
+      setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          connectWebSocket();
+        }
+      }, 5000);
+    };
+
+    ws.onerror = (err) => {
+      console.error('WebSocket error:', err);
+    };
+  }
+
+  // При уходе со страницы закрываем соединение
+  window.addEventListener('beforeunload', () => {
+    if (ws) {
+      ws.close();
+    }
+  });
+
+  // ================================
 
   async function loadBoardData() {
     try {
@@ -204,7 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Drag & Drop (прежний)
+  // Drag & Drop
   function initDragAndDrop() {
     const cards = document.querySelectorAll('.card');
     const columns = document.querySelectorAll('.column');
@@ -264,7 +323,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         column_id: parseInt(targetColumnId),
         order: newOrder
       });
-      if (!res.ok) throw new Error((await res.json()).detail);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Move failed');
+      }
+      // WebSocket уже отправит уведомление всем, включая нас, но мы обновим доску сразу
       await loadBoardData();
     } catch (err) {
       alert(err.message);
@@ -308,12 +371,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         searchResults.style.display = 'none';
         searchInput.value = '';
         if (card.board_id == boardId) {
-          // Карточка в текущей доске – открываем модалку
           if (window.currentBoardOwner && window.openCardDetail) {
             window.openCardDetail(card.id, window.currentBoardOwner, userRole);
           }
         } else {
-          // Карточка в другой доске – предупреждаем и перенаправляем
           if (confirm('This card is in another board. Open it?')) {
             window.location.href = `board.html?id=${card.board_id}`;
           }
@@ -334,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Модалка для колонок/карточек
+  // Модалка
   const modalOverlay = document.getElementById('modal-overlay');
   const modalTitle = document.getElementById('modal-title');
   const modalInput = document.getElementById('modal-input');
