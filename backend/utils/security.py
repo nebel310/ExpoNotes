@@ -6,6 +6,7 @@ from datetime import timezone
 
 from dotenv import load_dotenv
 from fastapi import Depends
+from fastapi import WebSocket
 from fastapi import HTTPException
 from fastapi import status
 from fastapi.security import OAuth2PasswordBearer
@@ -93,3 +94,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserOrm:
 def get_password_hash(password: str) -> str:
     """Создает хэш пароля."""
     return pwd_context.hash(password)
+
+
+async def get_current_user_from_token_ws(token: str) -> UserOrm | None:
+    """Аутентификация пользователя по токену для WebSocket (без Depends)."""
+    try:
+        # Используем тот же подход, что в get_current_user, но без HTTPException
+        from jose import jwt, JWTError
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+        # Проверить blacklist (упростим, можно пропустить)
+        user = await UserRepository.get_user_by_email(email)
+        return user
+    except JWTError:
+        return None

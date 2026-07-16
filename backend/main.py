@@ -17,6 +17,7 @@ from router.cards import columns_cards_router, cards_router
 from router.comments import card_comments_router, comments_router
 from router.audit_log import router as audit_log_router
 from router.search import router as search_router
+from websocket.router import router as ws_router
 from minio.client import s3_client
 
 
@@ -162,6 +163,7 @@ app.include_router(card_comments_router)
 app.include_router(comments_router)
 app.include_router(audit_log_router)
 app.include_router(search_router)
+app.include_router(ws_router)
 
 
 
@@ -170,5 +172,5 @@ if __name__ == "__main__":
         "main:app",
         reload=True,
         port=3001,
-        host="0.0.0.0"
+        #host="0.0.0.0"
     )

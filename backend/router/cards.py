@@ -11,6 +11,7 @@ from schemas.cards import (
 from schemas.base import SuccessResponse
 from utils.security import get_current_user
 from utils.pagination import encode_cursor, decode_cursor
+from websocket.connection_manager import manager
 
 
 
@@ -253,6 +254,16 @@ async def move_card(
             new_order=move_data.order,
             user_id=current_user.id
         )
+        # Определяем board_id для уведомления
+        column = await ColumnRepository.get_column_by_id(card.column_id)
+        if column:
+            await manager.broadcast_to_board(
+                board_id=column.board_id,
+                message={
+                    "type": "card_moved",
+                    "card": CardResponse.model_validate(card).model_dump()
+                }
+            )
         return card
     except ValueError as e:
         handle_value_error(e)
